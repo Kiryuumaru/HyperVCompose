@@ -1,12 +1,20 @@
-
 using Application.Common;
 using ApplicationBuilderHelpers;
 using CliWrap.EventStream;
 using Infrastructure.SQLite;
 using Presentation;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 
+using var log = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateLogger();
+
+log.Information("Installing service...");
 CancellationTokenSource cts = new();
 Console.CancelKeyPress += (s, e) =>
 {
@@ -15,15 +23,15 @@ Console.CancelKeyPress += (s, e) =>
 
 if (args.Any(i => i.Equals("--install-service", StringComparison.InvariantCultureIgnoreCase)))
 {
-    Console.WriteLine("Installing service...");
+    log.Information("Installing service...");
     await installAsService();
-    Console.WriteLine("Installing service done");
+    log.Information("Installing service done");
 }
 else if (args.Any(i => i.Equals("--uninstall-service", StringComparison.InvariantCultureIgnoreCase)))
 {
-    Console.WriteLine("Uninstalling service...");
+    log.Information("Uninstalling service...");
     await uninstallAsService();
-    Console.WriteLine("Uninstalling service done");
+    log.Information("Uninstalling service done");
 }
 else if (args.Any(i => i.Equals("--logs-service", StringComparison.InvariantCultureIgnoreCase)))
 {
@@ -157,4 +165,23 @@ async Task downloadWinsw()
     }
     ZipFile.ExtractToDirectory(winswZipPath, winswZipExtractPath);
     File.Copy(winswDownloadedExecPath, winswExecPath);
+}
+
+
+public class PaddedPropertyEnricher : ILogEventEnricher
+{
+    private readonly string _propertyName;
+    private readonly int _maxLength;
+
+    public PaddedPropertyEnricher(string propertyName, int maxLength)
+    {
+        _propertyName = propertyName;
+        _maxLength = maxLength;
+    }
+
+    public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
+    {
+        var property = propertyFactory.CreateProperty(_propertyName, new string(' ', _maxLength));
+        logEvent.AddPropertyIfAbsent(property);
+    }
 }
