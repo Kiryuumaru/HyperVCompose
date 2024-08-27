@@ -51,8 +51,7 @@ class Build : BaseNukeBuildHelpers
                     .EnablePublishSingleFile()
                     .SetOutput(outPath));
 
-                await (outPath / "Presentation.exe").CopyRecursively(outPath / "HyperVCompose.exe");
-                await (outPath / "Presentation.exe").DeleteRecursively();
+                await (outPath / "Presentation.exe").MoveRecursively(outPath / "HyperVCompose.exe");
 
                 archivePath.ZipTo(outAsset);
 
