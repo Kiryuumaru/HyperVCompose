@@ -86,7 +86,6 @@ class Build : BaseNukeBuildHelpers
         assets.Add(GetOutAsset(arch));
 
         assets.Add(OutputDirectory / $"installer_{arch}.ps1");
-        assets.Add(OutputDirectory / $"uninstaller_{arch}.ps1");
 
         return [.. assets];
     }
