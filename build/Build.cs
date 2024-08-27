@@ -34,7 +34,7 @@ class Build : BaseNukeBuildHelpers
             definitionArch.WorkflowId($"build_windows_{arch}");
             definitionArch.DisplayName($"[Build] Windows{arch.ToUpperInvariant()}");
             definitionArch.ReleaseAsset(context => GetAssets(arch));
-            definitionArch.Execute(context =>
+            definitionArch.Execute(async context =>
             {
                 var outAsset = GetOutAsset(arch);
                 var archivePath = outAsset.Parent / outAsset.NameWithoutExtension;
@@ -50,6 +50,9 @@ class Build : BaseNukeBuildHelpers
                     .SetRuntime($"win-{arch.ToLowerInvariant()}")
                     .EnablePublishSingleFile()
                     .SetOutput(outPath));
+
+                await (outPath / "Presentation.exe").CopyRecursively(outPath / "HyperVCompose.exe");
+                await (outPath / "Presentation.exe").DeleteRecursively();
 
                 archivePath.ZipTo(outAsset);
 
