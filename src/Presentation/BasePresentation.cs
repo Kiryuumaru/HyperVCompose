@@ -11,7 +11,6 @@ using Serilog.Events;
 using Newtonsoft.Json.Linq;
 using Application.Common;
 using Microsoft.Extensions.Hosting;
-using Google.Protobuf.WellKnownTypes;
 
 namespace Presentation;
 
@@ -22,6 +21,7 @@ internal class BasePresentation : BaseApplication
         public void Enrich(LogEvent evt, ILogEventPropertyFactory _)
         {
             evt.AddOrUpdateProperty(new LogEventProperty("EventGuid", new ScalarValue(Guid.NewGuid())));
+            evt.AddOrUpdateProperty(new LogEventProperty("RuntimeGuid", new ScalarValue(Defaults.RuntimeGuid)));
         }
     }
 
@@ -106,5 +106,12 @@ internal class BasePresentation : BaseApplication
         (host as WebApplication)!.UseAuthorization();
         (host as WebApplication)!.MapControllers();
         (host as WebApplication)!.UseSerilogRequestLogging();
+    }
+
+    public override void RunPreparation(ApplicationDependencyBuilder builder)
+    {
+        base.RunPreparation(builder);
+
+        Log.Information("Application starting");
     }
 }
