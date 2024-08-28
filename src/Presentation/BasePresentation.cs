@@ -6,31 +6,51 @@ using Serilog;
 using Serilog.Core;
 using AbsolutePathHelpers;
 using System.Xml.Linq;
+using Serilog.Formatting.Compact;
+using Serilog.Events;
+using Newtonsoft.Json.Linq;
+using Application.Common;
 
 namespace Presentation;
 
 internal class BasePresentation : BaseApplication
 {
-    private static LoggerConfiguration ConfigureLogger(LoggerConfiguration loggerConfiguration)
+    class LogGuidEnricher : ILogEventEnricher
     {
-        return loggerConfiguration
+        public void Enrich(LogEvent evt, ILogEventPropertyFactory _)
+        {
+            evt.AddOrUpdateProperty(new LogEventProperty("EventGuid", new ScalarValue(Guid.NewGuid())));
+        }
+    }
+
+    private static LoggerConfiguration ConfigureLogger(LoggerConfiguration loggerConfiguration, IConfiguration configuration)
+    {
+        loggerConfiguration = loggerConfiguration
             .MinimumLevel.Information()
-            .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
             .Enrich.FromLogContext()
-            .WriteTo.Console(restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug)
-            .WriteTo.File(Defaults.DataPath / "logs" / "log.txt",
-                          restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug,
-                          rollingInterval: RollingInterval.Day);
+            .Enrich.With(new LogGuidEnricher())
+            .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Debug);
+
+        if (configuration.GetVarRefValueOrDefault("MAKE_LOGS", "no").Equals("no", StringComparison.InvariantCultureIgnoreCase))
+        {
+            loggerConfiguration = loggerConfiguration
+                .WriteTo.File(
+                    formatter: new CompactJsonFormatter(),
+                    path: Defaults.DataPath / "logs" / "log-.jsonl",
+                    restrictedToMinimumLevel: LogEventLevel.Debug,
+                    rollingInterval: RollingInterval.Hour);
+        }
+
+        return loggerConfiguration;
     }
 
     public override void AddConfiguration(ApplicationDependencyBuilder builder, IConfiguration configuration)
     {
         base.AddConfiguration(builder, configuration);
 
-        Log.Logger = ConfigureLogger(new LoggerConfiguration()).CreateLogger();
+        Log.Logger = ConfigureLogger(new LoggerConfiguration(), configuration).CreateLogger();
 
-        (builder.Builder as WebApplicationBuilder)!.Host.UseSerilog((context, loggerConfiguration) => ConfigureLogger(loggerConfiguration));
+        (builder.Builder as WebApplicationBuilder)!.Host.UseSerilog((context, loggerConfiguration) => ConfigureLogger(loggerConfiguration, configuration));
 
         (configuration as ConfigurationManager)!.AddEnvironmentVariables();
     }
