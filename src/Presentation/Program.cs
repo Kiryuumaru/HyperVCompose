@@ -14,7 +14,6 @@ using var log = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateLogger();
 
-log.Information("Installing service...");
 CancellationTokenSource cts = new();
 Console.CancelKeyPress += (s, e) =>
 {
