@@ -10,6 +10,8 @@ using Serilog.Formatting.Compact;
 using Serilog.Events;
 using Newtonsoft.Json.Linq;
 using Application.Common;
+using Microsoft.Extensions.Hosting;
+using Google.Protobuf.WellKnownTypes;
 
 namespace Presentation;
 
@@ -31,14 +33,14 @@ internal class BasePresentation : BaseApplication
             .Enrich.With(new LogGuidEnricher())
             .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Debug);
 
-        if (configuration.GetVarRefValueOrDefault("MAKE_LOGS", "no").Equals("no", StringComparison.InvariantCultureIgnoreCase))
+        if (configuration.GetVarRefValueOrDefault("MAKE_LOGS", "no").Equals("svc", StringComparison.InvariantCultureIgnoreCase))
         {
             loggerConfiguration = loggerConfiguration
                 .WriteTo.File(
                     formatter: new CompactJsonFormatter(),
                     path: Defaults.DataPath / "logs" / "log-.jsonl",
                     restrictedToMinimumLevel: LogEventLevel.Debug,
-                    rollingInterval: RollingInterval.Hour);
+                    rollingInterval: RollingInterval.Minute);
         }
 
         return loggerConfiguration;
@@ -47,6 +49,8 @@ internal class BasePresentation : BaseApplication
     public override void AddConfiguration(ApplicationDependencyBuilder builder, IConfiguration configuration)
     {
         base.AddConfiguration(builder, configuration);
+
+        (builder.Builder as WebApplicationBuilder)!.AddServiceDefaults();
 
         Log.Logger = ConfigureLogger(new LoggerConfiguration(), configuration).CreateLogger();
 
@@ -97,6 +101,7 @@ internal class BasePresentation : BaseApplication
     {
         base.AddMappings(builder, host);
 
+        (host as WebApplication)!.MapDefaultEndpoints();
         (host as WebApplication)!.UseHttpsRedirection();
         (host as WebApplication)!.UseAuthorization();
         (host as WebApplication)!.MapControllers();
