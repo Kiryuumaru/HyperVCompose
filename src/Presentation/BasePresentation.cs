@@ -25,8 +25,6 @@ internal class BasePresentation : BaseApplication
 
         (configuration as ConfigurationManager)!.AddEnvironmentVariables();
 
-        (builder.Builder as WebApplicationBuilder)!.AddServiceDefaults();
-
         (builder.Builder as WebApplicationBuilder)!.Host.UseSerilog((context, loggerConfiguration) => LoggerBuilder.Configure(loggerConfiguration, configuration));
 
         Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), configuration).CreateLogger();
@@ -74,7 +72,6 @@ internal class BasePresentation : BaseApplication
     {
         base.AddMappings(builder, host);
 
-        (host as WebApplication)!.MapDefaultEndpoints();
         (host as WebApplication)!.UseHttpsRedirection();
         (host as WebApplication)!.UseAuthorization();
         (host as WebApplication)!.MapControllers();

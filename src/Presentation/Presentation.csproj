@@ -25,7 +25,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Application\Application.csproj" />
-		<ProjectReference Include="..\AspireApp1\AspireApp1.ServiceDefaults\AspireApp1.ServiceDefaults.csproj" />
 		<ProjectReference Include="..\Infrastructure.SQLite\Infrastructure.SQLite.csproj" />
 	</ItemGroup>
 

@@ -18,10 +18,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		installerTemplate.ps1 = installerTemplate.ps1
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspireApp1.AppHost", "src\AspireApp1\AspireApp1.AppHost\AspireApp1.AppHost.csproj", "{1F683182-82ED-47F9-AAFB-6FEB5C7C7173}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspireApp1.ServiceDefaults", "src\AspireApp1\AspireApp1.ServiceDefaults\AspireApp1.ServiceDefaults.csproj", "{70308691-A9E5-4155-ACEC-A34C9973BC29}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,14 +44,6 @@ Global
 		{07E639A5-5CAE-49F0-8000-83664155E4F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07E639A5-5CAE-49F0-8000-83664155E4F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{07E639A5-5CAE-49F0-8000-83664155E4F2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1F683182-82ED-47F9-AAFB-6FEB5C7C7173}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1F683182-82ED-47F9-AAFB-6FEB5C7C7173}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1F683182-82ED-47F9-AAFB-6FEB5C7C7173}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1F683182-82ED-47F9-AAFB-6FEB5C7C7173}.Release|Any CPU.Build.0 = Release|Any CPU
-		{70308691-A9E5-4155-ACEC-A34C9973BC29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{70308691-A9E5-4155-ACEC-A34C9973BC29}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{70308691-A9E5-4155-ACEC-A34C9973BC29}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{70308691-A9E5-4155-ACEC-A34C9973BC29}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
