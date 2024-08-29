@@ -23,49 +23,22 @@ internal static class LoggerBuilder
     {
         return new SystemConsoleTheme(new Dictionary<ConsoleThemeStyle, SystemConsoleThemeStyle>()
         {
-            {
-                ConsoleThemeStyle.LevelVerbose, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.Gray,
-                    Background = ConsoleColor.Black,
-                }
-            },
-            {
-                ConsoleThemeStyle.LevelDebug, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.White,
-                    Background = ConsoleColor.Black,
-                }
-            },
-            {
-                ConsoleThemeStyle.LevelInformation, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.Black,
-                    Background = ConsoleColor.White
-                }
-            },
-            {
-                ConsoleThemeStyle.LevelWarning, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.Magenta,
-                    Background = ConsoleColor.Yellow,
-                }
-            },
-            {
-                ConsoleThemeStyle.LevelError, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.White,
-                    Background = ConsoleColor.Red,
-                }
-            },
-            {
-                ConsoleThemeStyle.LevelFatal, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.Black,
-                    Background = ConsoleColor.Magenta,
-                }
-            }
-
+            [ConsoleThemeStyle.Text] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.White },
+            [ConsoleThemeStyle.SecondaryText] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Gray },
+            [ConsoleThemeStyle.TertiaryText] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.DarkGray },
+            [ConsoleThemeStyle.Invalid] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Yellow },
+            [ConsoleThemeStyle.Null] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Blue },
+            [ConsoleThemeStyle.Name] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Gray },
+            [ConsoleThemeStyle.String] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Cyan },
+            [ConsoleThemeStyle.Number] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Magenta },
+            [ConsoleThemeStyle.Boolean] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Blue },
+            [ConsoleThemeStyle.Scalar] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Green },
+            [ConsoleThemeStyle.LevelVerbose] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Gray },
+            [ConsoleThemeStyle.LevelDebug] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.White },
+            [ConsoleThemeStyle.LevelInformation] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Black, Background = ConsoleColor.White },
+            [ConsoleThemeStyle.LevelWarning] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Magenta, Background = ConsoleColor.Yellow },
+            [ConsoleThemeStyle.LevelError] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.White, Background = ConsoleColor.Red },
+            [ConsoleThemeStyle.LevelFatal] = new SystemConsoleThemeStyle { Foreground = ConsoleColor.Black, Background = ConsoleColor.Magenta }
         });
     }
 
