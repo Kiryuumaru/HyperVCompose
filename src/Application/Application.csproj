@@ -20,8 +20,4 @@
 		<PackageReference Include="RestfulHelpers" Version="1.7.47" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="NewFolder\" />
-	</ItemGroup>
-
 </Project>

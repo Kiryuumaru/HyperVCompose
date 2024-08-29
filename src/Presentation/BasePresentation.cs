@@ -6,33 +6,28 @@ using Serilog;
 using Serilog.Core;
 using AbsolutePathHelpers;
 using System.Xml.Linq;
+using Serilog.Formatting.Compact;
+using Serilog.Events;
+using Newtonsoft.Json.Linq;
+using Application.Common;
+using Microsoft.Extensions.Hosting;
+using Presentation.Common;
+using Presentation.Logger.Enrichers;
+using Presentation.Logger.Common;
 
 namespace Presentation;
 
 internal class BasePresentation : BaseApplication
 {
-    private static LoggerConfiguration ConfigureLogger(LoggerConfiguration loggerConfiguration)
-    {
-        return loggerConfiguration
-            .MinimumLevel.Information()
-            .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
-            .Enrich.FromLogContext()
-            .WriteTo.Console(restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug)
-            .WriteTo.File(Defaults.DataPath / "logs" / "log.txt",
-                          restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug,
-                          rollingInterval: RollingInterval.Day);
-    }
-
     public override void AddConfiguration(ApplicationDependencyBuilder builder, IConfiguration configuration)
     {
         base.AddConfiguration(builder, configuration);
 
-        Log.Logger = ConfigureLogger(new LoggerConfiguration()).CreateLogger();
-
-        (builder.Builder as WebApplicationBuilder)!.Host.UseSerilog((context, loggerConfiguration) => ConfigureLogger(loggerConfiguration));
-
         (configuration as ConfigurationManager)!.AddEnvironmentVariables();
+
+        (builder.Builder as WebApplicationBuilder)!.Host.UseSerilog((context, loggerConfiguration) => LoggerBuilder.Configure(loggerConfiguration, configuration));
+
+        Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), configuration).CreateLogger();
     }
 
     public override void AddServices(ApplicationDependencyBuilder builder, IServiceCollection services)
@@ -81,5 +76,12 @@ internal class BasePresentation : BaseApplication
         (host as WebApplication)!.UseAuthorization();
         (host as WebApplication)!.MapControllers();
         (host as WebApplication)!.UseSerilogRequestLogging();
+    }
+
+    public override void RunPreparation(ApplicationDependencyBuilder builder)
+    {
+        base.RunPreparation(builder);
+
+        Log.Information("Application starting");
     }
 }
