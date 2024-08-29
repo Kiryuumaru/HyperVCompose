@@ -24,21 +24,17 @@ internal static class LoggerBuilder
         return new SystemConsoleTheme(new Dictionary<ConsoleThemeStyle, SystemConsoleThemeStyle>()
         {
             {
-                ConsoleThemeStyle.String, new SystemConsoleThemeStyle
+                ConsoleThemeStyle.LevelVerbose, new SystemConsoleThemeStyle
                 {
-                    Foreground = ConsoleColor.Green,
+                    Foreground = ConsoleColor.Gray,
+                    Background = ConsoleColor.Black,
                 }
             },
             {
-                ConsoleThemeStyle.Number, new SystemConsoleThemeStyle
+                ConsoleThemeStyle.LevelDebug, new SystemConsoleThemeStyle
                 {
-                    Foreground = ConsoleColor.Cyan,
-                }
-            },
-            {
-                ConsoleThemeStyle.Boolean, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.Red,
+                    Foreground = ConsoleColor.White,
+                    Background = ConsoleColor.Black,
                 }
             },
             {
@@ -49,15 +45,9 @@ internal static class LoggerBuilder
                 }
             },
             {
-                ConsoleThemeStyle.SecondaryText, new SystemConsoleThemeStyle
+                ConsoleThemeStyle.LevelWarning, new SystemConsoleThemeStyle
                 {
-                    Foreground = ConsoleColor.White
-                }
-            },
-            {
-                ConsoleThemeStyle.Null, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.Black,
+                    Foreground = ConsoleColor.Magenta,
                     Background = ConsoleColor.Yellow,
                 }
             },
@@ -71,28 +61,8 @@ internal static class LoggerBuilder
             {
                 ConsoleThemeStyle.LevelFatal, new SystemConsoleThemeStyle
                 {
-                    Foreground = ConsoleColor.Black, Background = ConsoleColor.Cyan,
-                }
-            },
-            {
-                ConsoleThemeStyle.LevelWarning, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.Magenta,
-                    Background = ConsoleColor.Yellow,
-                }
-            },
-            {
-                ConsoleThemeStyle.LevelVerbose, new SystemConsoleThemeStyle
-                {
-                    Foreground = ConsoleColor.White,
-                    Background = ConsoleColor.Green,
-                }
-            },
-            {
-                ConsoleThemeStyle.Name, new SystemConsoleThemeStyle
-                {
                     Foreground = ConsoleColor.Black,
-                    Background = ConsoleColor.Yellow,
+                    Background = ConsoleColor.Magenta,
                 }
             }
 
