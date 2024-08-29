@@ -3,16 +3,18 @@ using Application;
 using Application.Common;
 using CliWrap.EventStream;
 using CommandLine;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
+using Serilog.Formatting.Compact.Reader;
+using Serilog.Parsing;
 using System.Globalization;
 using System.IO;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
-using static System.Net.Mime.MediaTypeNames;
 
-namespace Presentation;
+namespace Presentation.Common;
 
 internal static class ServiceManager
 {
@@ -107,6 +109,7 @@ internal static class ServiceManager
               <name>Hyper-V Composer</name>
               <description>Hyper-V Composer API Service for managing Hyper-V VM instances</description>
               <executable>%BASE%\HyperVCompose.exe</executable>
+              <arguments>run</arguments>
               <log mode="none"></log>
               <startmode>Automatic</startmode>
               <onfailure action="restart" delay="2 sec"/>
@@ -119,81 +122,161 @@ internal static class ServiceManager
         await File.WriteAllTextAsync(serviceConfig, config, cancellationToken);
     }
 
+    private static LogEvent FromLogEvent(LogEvent baseLogEvent, string text, params (string Key, object Value)[] properties)
+    {
+        var props = baseLogEvent.Properties
+            .Where(i => i.Key != "EventGuid")
+            .Select(i => new LogEventProperty(i.Key, i.Value))
+            .ToList();
+        props.Add(new LogEventProperty("EventGuid", new ScalarValue(Guid.NewGuid())));
+        foreach (var (Key, Value) in properties)
+        {
+            props.Add(new LogEventProperty(Key, new ScalarValue(Value)));
+        }
+        return new LogEvent(baseLogEvent.Timestamp, LogEventLevel.Information, null, new MessageTemplateParser().Parse(text), props);
+    }
+
     public static async Task Logs(int tail, bool follow, CancellationToken cancellationToken)
     {
         CancellationTokenSource? logFileCts = null;
         Guid lastLog = Guid.Empty;
-        Guid currentRuntime = Guid.Empty;
-        int printedLines = 0;
-        void printEventLog(string logEventStr)
+        void printLogEvent(LogEvent logEvent)
         {
             try
             {
-                var logEvent = Serilog.Formatting.Compact.Reader.LogEventReader.ReadFromString(logEventStr);
                 try
                 {
-                    logEvent.Properties.TryGetValue("RuntimeGuid", out var runtimeGuidProp);
-                    var runtimeGuidScalarValue = runtimeGuidProp.Cast<ScalarValue>();
-                    if (Guid.TryParse(runtimeGuidScalarValue.Value?.ToString(), out var runtimeGuid) &&
-                        runtimeGuid != currentRuntime)
+                    if (bool.Parse(logEvent.Properties["IsHeadLog"].Cast<ScalarValue>().Value?.ToString()!))
                     {
-                        currentRuntime = runtimeGuid;
-                        Log.Information("================================================================");
-                        Log.Information("     Logs for runtime: {RuntimeGuid}", currentRuntime);
-                        Log.Information("================================================================");
+                        var runtimeGuid = Guid.Parse(logEvent.Properties["RuntimeGuid"].Cast<ScalarValue>().Value?.ToString()!);
+                        Log.Write(FromLogEvent(logEvent, "===================================================="));
+                        Log.Write(FromLogEvent(logEvent, " Service started: {timestamp}", ("timestamp", logEvent.Timestamp)));
+                        Log.Write(FromLogEvent(logEvent, " Runtime ID: {runtimeGuid}", ("runtimeGuid", runtimeGuid)));
+                        Log.Write(FromLogEvent(logEvent, "===================================================="));
                     }
                 }
                 catch { }
                 try
                 {
-                    logEvent.Properties.TryGetValue("EventGuid", out var eventGuidProp);
-                    var eventGuidScalarValue = eventGuidProp.Cast<ScalarValue>();
-                    if (Guid.TryParse(eventGuidScalarValue.Value?.ToString(), out var eventGuid))
-                    {
-                        lastLog = eventGuid;
-                    }
+                    var lastLog = Guid.Parse(logEvent.Properties["EventGuid"].Cast<ScalarValue>().Value?.ToString()!);
                 }
                 catch { }
                 Log.Write(logEvent);
             }
             catch { }
         }
-        while (true)
+        void printLogEventStr(string? logEventStr)
         {
-            if (tail < printedLines)
+            if (string.IsNullOrWhiteSpace(logEventStr))
             {
-                break;
+                return;
             }
-
-            var latestLogFile = await GetLatestLogFile([], cancellationToken);
-
-            printedLines++;
+            try
+            {
+                printLogEvent(LogEventReader.ReadFromString(logEventStr));
+            }
+            catch { }
         }
+
+        foreach (var logEvent in await GetLogEvents(tail, cancellationToken))
+        {
+            printLogEvent(logEvent);
+        }
+
         if (!follow)
         {
             return;
         }
+
+        bool hasPrintedTail = false;
         await LatestFileListener(async logFile =>
         {
             logFileCts?.Cancel();
             logFileCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var ct = logFileCts.Token;
             try
             {
                 using var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using var streamReader = new StreamReader(fileStream);
 
-                while (!cancellationToken.IsCancellationRequested)
+                if (!hasPrintedTail)
                 {
-                    var line = await streamReader.ReadLineAsync(cancellationToken);
-                    if (string.IsNullOrWhiteSpace(line))
+                    try
                     {
-                        continue;
+                        while (!ct.IsCancellationRequested)
+                        {
+                            var line = await streamReader.ReadLineAsync(ct.WithTimeout(TimeSpan.FromMilliseconds(500)));
+                            try
+                            {
+                                var logEventTail = LogEventReader.ReadFromString(line!);
+                                var logTail = Guid.Parse(logEventTail.Properties["EventGuid"].Cast<ScalarValue>().Value?.ToString()!);
+                                if (logTail == lastLog)
+                                {
+                                    break;
+                                }
+                            }
+                            catch
+                            {
+                                break;
+                            }
+                        }
                     }
-                    printEventLog(line);
+                    catch { }
+                    hasPrintedTail = true;
+                }
+
+                while (!ct.IsCancellationRequested)
+                {
+                    printLogEventStr(await streamReader.ReadLineAsync(ct));
                 }
             }
             catch { }
         }, cancellationToken);
+    }
+
+    private static async Task<List<LogEvent>> GetLogEvents(int count, CancellationToken cancellationToken)
+    {
+        List<LogEvent> logEvents = [];
+
+        List<AbsolutePath> scannedLogFiles = [];
+        int printedLines = 0;
+        while (true)
+        {
+            if (count <= printedLines)
+            {
+                break;
+            }
+
+            var latestLogFile = await GetLatestLogFile([.. scannedLogFiles], cancellationToken);
+
+            if (latestLogFile == null)
+            {
+                break;
+            }
+
+            scannedLogFiles.Add(latestLogFile);
+
+            using var fileStream = new FileStream(latestLogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var streamReader = new StreamReader(fileStream);
+
+            foreach (var line in (await streamReader.ReadToEndAsync(cancellationToken)).Split(Environment.NewLine).Reverse())
+            {
+                if (count <= printedLines)
+                {
+                    break;
+                }
+
+                try
+                {
+                    var logEvent = LogEventReader.ReadFromString(line);
+                    logEvents.Add(logEvent);
+                    printedLines++;
+                }
+                catch { }
+            }
+        }
+
+        return logEvents.ToArray().Reverse().ToList();
     }
 
     private static async Task LatestFileListener(Action<AbsolutePath> onLogfileChanged, CancellationToken cancellationToken)
@@ -242,7 +325,7 @@ internal static class ServiceManager
                     bool skip = false;
                     foreach (var skipLogFile in skipLogFiles)
                     {
-                        if (GetLogTime(logFile).LogStr == currentLogTime.LogStr)
+                        if (GetLogTime(skipLogFile).LogStr == currentLogTime.LogStr)
                         {
                             skip = true;
                             break;
@@ -250,7 +333,7 @@ internal static class ServiceManager
                     }
                     if (skip)
                     {
-                        break;
+                        continue;
                     }
                     if (latestLogTime.LogStr == null || latestLogTime.LogDateTime < currentLogTime.LogDateTime)
                     {

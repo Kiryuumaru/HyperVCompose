@@ -11,52 +11,25 @@ using Serilog.Events;
 using Newtonsoft.Json.Linq;
 using Application.Common;
 using Microsoft.Extensions.Hosting;
+using Presentation.Common;
+using Presentation.Logger.Enrichers;
+using Presentation.Logger.Common;
 
 namespace Presentation;
 
 internal class BasePresentation : BaseApplication
 {
-    class LogGuidEnricher : ILogEventEnricher
-    {
-        public void Enrich(LogEvent evt, ILogEventPropertyFactory _)
-        {
-            evt.AddOrUpdateProperty(new LogEventProperty("EventGuid", new ScalarValue(Guid.NewGuid())));
-            evt.AddOrUpdateProperty(new LogEventProperty("RuntimeGuid", new ScalarValue(Defaults.RuntimeGuid)));
-        }
-    }
-
-    private static LoggerConfiguration ConfigureLogger(LoggerConfiguration loggerConfiguration, IConfiguration configuration)
-    {
-        loggerConfiguration = loggerConfiguration
-            .MinimumLevel.Information()
-            .Enrich.FromLogContext()
-            .Enrich.With(new LogGuidEnricher())
-            .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Debug);
-
-        if (configuration.GetVarRefValueOrDefault("MAKE_LOGS", "no").Equals("svc", StringComparison.InvariantCultureIgnoreCase))
-        {
-            loggerConfiguration = loggerConfiguration
-                .WriteTo.File(
-                    formatter: new CompactJsonFormatter(),
-                    path: Defaults.DataPath / "logs" / "log-.jsonl",
-                    restrictedToMinimumLevel: LogEventLevel.Debug,
-                    rollingInterval: RollingInterval.Minute);
-        }
-
-        return loggerConfiguration;
-    }
-
     public override void AddConfiguration(ApplicationDependencyBuilder builder, IConfiguration configuration)
     {
         base.AddConfiguration(builder, configuration);
 
+        (configuration as ConfigurationManager)!.AddEnvironmentVariables();
+
         (builder.Builder as WebApplicationBuilder)!.AddServiceDefaults();
 
-        Log.Logger = ConfigureLogger(new LoggerConfiguration(), configuration).CreateLogger();
+        (builder.Builder as WebApplicationBuilder)!.Host.UseSerilog((context, loggerConfiguration) => LoggerBuilder.Configure(loggerConfiguration, configuration));
 
-        (builder.Builder as WebApplicationBuilder)!.Host.UseSerilog((context, loggerConfiguration) => ConfigureLogger(loggerConfiguration, configuration));
-
-        (configuration as ConfigurationManager)!.AddEnvironmentVariables();
+        Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), configuration).CreateLogger();
     }
 
     public override void AddServices(ApplicationDependencyBuilder builder, IServiceCollection services)
