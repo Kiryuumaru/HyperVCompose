@@ -11,8 +11,8 @@ public class BaseApplication : ApplicationDependency
     {
         base.AddServices(builder, services);
 
-        services.AddTransient<LocalStoreService>();
         services.AddSingleton<LocalStoreConcurrencyService>();
+        services.AddTransient<LocalStoreService>();
 
         services.AddHostedService<DamperWorker>();
     }

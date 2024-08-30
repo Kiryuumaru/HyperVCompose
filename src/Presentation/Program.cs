@@ -6,10 +6,12 @@ using CliWrap.EventStream;
 using CommandLine;
 using CommandLine.Text;
 using Infrastructure.SQLite;
+using Infrastructure.SQLite.LocalStore;
+using Microsoft.Extensions.Configuration;
 using Presentation;
 using Presentation.Common;
-using Presentation.Logger;
 using Presentation.Logger.Common;
+using Presentation.Logger.Extensions;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -19,7 +21,6 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
-
 
 var parserResult = new Parser(with =>
     {
@@ -43,7 +44,7 @@ return await parserResult
                 }
                 ApplicationDependencyBuilder.FromBuilder(builder)
                     .Add<BasePresentation>()
-                    .Add<SQLiteApplication>()
+                    .Add<SQLiteLocalStoreInfrastructure>()
                     .Run();
                 return Task.FromResult(0);
             }
@@ -53,8 +54,7 @@ return await parserResult
         {
             if (Validate(parserResult, opts))
             {
-                Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration()).CreateLogger();
-                var ct = SetCancellableConsole();
+                var (_, ct) = SetupCli(opts.LogLevel);
                 try
                 {
                     if (opts.Install)
@@ -75,13 +75,10 @@ return await parserResult
         {
             if (Validate(parserResult, opts))
             {
+                var (configuration, ct) = SetupCli(opts.LogLevel);
                 try
                 {
-                    Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration())
-                        .MinimumLevel.Is(opts.LogLevel)
-                        .CreateLogger();
-                    var ct = SetCancellableConsole();
-                    await LogsExtension.Logs(opts.Tail, opts.Follow, ct);
+                    await LogsExtension.Logs(configuration, opts.Tail, opts.Follow, ct);
                 }
                 catch (OperationCanceledException) { }
                 return 0;
@@ -90,14 +87,23 @@ return await parserResult
         },
         errs => Task.FromResult(-1));
 
-static CancellationToken SetCancellableConsole()
+static (IConfiguration Configuration, CancellationToken CancellationToken) SetupCli(LogEventLevel logEventLevel)
 {
+    var configuration = new ConfigurationBuilder()
+        .SetBasePath(Environment.CurrentDirectory)
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true, reloadOnChange: true)
+        .AddEnvironmentVariables()
+        .Build();
+    Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), configuration)
+        .MinimumLevel.Is(logEventLevel)
+        .CreateLogger();
     CancellationTokenSource cts = new();
     Console.CancelKeyPress += (s, e) =>
     {
         cts.Cancel();
     };
-    return cts.Token;
+    return (configuration, cts.Token);
 }
 
 void DisplayHelp<T>(ParserResult<T> result)
@@ -161,6 +167,9 @@ class ServiceOptions : IArgumentValidation
 
     [Option("uninstall", Required = false, HelpText = "Uninstall service.")]
     public bool Uninstall { get; set; }
+
+    [Option('l', "level", Required = false, HelpText = "Level of logs to show.", Default = LogEventLevel.Information)]
+    public LogEventLevel LogLevel { get; set; }
 
     public void Validate()
     {

@@ -1,6 +1,7 @@
 ﻿using AbsolutePathHelpers;
 using Application;
 using Application.Common;
+using Application.Configuration.Extensions;
 using CliWrap.EventStream;
 using CommandLine;
 using Microsoft.Extensions.Logging;
@@ -13,11 +14,11 @@ using System.IO;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 
-namespace Presentation.Logger;
+namespace Presentation.Logger.Extensions;
 
 internal class LogsExtension
 {
-    public static async Task Logs(int tail, bool follow, CancellationToken cancellationToken)
+    public static async Task Logs(IConfiguration configuration, int tail, bool follow, CancellationToken cancellationToken)
     {
         CancellationTokenSource? logFileCts = null;
         Guid lastLog = Guid.Empty;
@@ -56,7 +57,7 @@ internal class LogsExtension
             catch { }
         }
 
-        foreach (var logEvent in await GetLogEvents(tail, cancellationToken))
+        foreach (var logEvent in await GetLogEvents(configuration, tail, cancellationToken))
         {
             printLogEvent(logEvent);
         }
@@ -67,7 +68,7 @@ internal class LogsExtension
         }
 
         bool hasPrintedTail = false;
-        await LatestFileListener(async logFile =>
+        await LatestFileListener(configuration, async logFile =>
         {
             logFileCts?.Cancel();
             logFileCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -112,7 +113,7 @@ internal class LogsExtension
                     }
                     else
                     {
-                        await Task.Delay(100);
+                        await Task.Delay(10);
                     }
                 }
             }
@@ -134,7 +135,7 @@ internal class LogsExtension
         return new LogEvent(baseLogEvent.Timestamp, LogEventLevel.Information, null, new MessageTemplateParser().Parse(text), props);
     }
 
-    private static async Task<List<LogEvent>> GetLogEvents(int count, CancellationToken cancellationToken)
+    private static async Task<List<LogEvent>> GetLogEvents(IConfiguration configuration, int count, CancellationToken cancellationToken)
     {
         List<LogEvent> logEvents = [];
 
@@ -147,7 +148,7 @@ internal class LogsExtension
                 break;
             }
 
-            var latestLogFile = await GetLatestLogFile([.. scannedLogFiles], cancellationToken);
+            var latestLogFile = await GetLatestLogFile(configuration, [.. scannedLogFiles], cancellationToken);
 
             if (latestLogFile == null)
             {
@@ -179,12 +180,12 @@ internal class LogsExtension
         return logEvents.ToArray().Reverse().ToList();
     }
 
-    private static async Task LatestFileListener(Action<AbsolutePath> onLogfileChanged, CancellationToken cancellationToken)
+    private static async Task LatestFileListener(IConfiguration configuration, Action<AbsolutePath> onLogfileChanged, CancellationToken cancellationToken)
     {
         AbsolutePath? logFile = null;
         while (!cancellationToken.IsCancellationRequested)
         {
-            var latestLogFile = await GetLatestLogFile([], cancellationToken);
+            var latestLogFile = await GetLatestLogFile(configuration, [], cancellationToken);
             if (latestLogFile != null && logFile != latestLogFile)
             {
                 onLogfileChanged(latestLogFile);
@@ -194,7 +195,7 @@ internal class LogsExtension
         }
     }
 
-    private static Task<AbsolutePath?> GetLatestLogFile(AbsolutePath[] skipLogFiles, CancellationToken cancellationToken)
+    private static Task<AbsolutePath?> GetLatestLogFile(IConfiguration configuration, AbsolutePath[] skipLogFiles, CancellationToken cancellationToken)
     {
         static (string? LogStr, DateTime LogDateTime) GetLogTime(AbsolutePath logPath)
         {
@@ -217,7 +218,7 @@ internal class LogsExtension
         return Task.Run(() =>
         {
             (string? LogStr, DateTime LogDateTime) latestLogTime = (default, default);
-            foreach (var logFile in (Defaults.DataPath / "logs").GetFiles())
+            foreach (var logFile in (configuration.GetDataPath() / "logs").GetFiles())
             {
                 try
                 {
@@ -247,7 +248,7 @@ internal class LogsExtension
             {
                 return null;
             }
-            return AbsolutePath.Create(Defaults.DataPath / "logs" / $"log-{latestLogTime.LogStr}.jsonl");
+            return AbsolutePath.Create(configuration.GetDataPath() / "logs" / $"log-{latestLogTime.LogStr}.jsonl");
         }, cancellationToken);
     }
 }

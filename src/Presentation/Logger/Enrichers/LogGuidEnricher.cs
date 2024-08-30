@@ -1,16 +1,19 @@
 ﻿using Application;
+using Application.Configuration.Extensions;
 using CommandLine;
 using Newtonsoft.Json.Linq;
 using Presentation.Logger.Abstractions;
-using Presentation.Logger.LogEventPropertyTypes;
+using Presentation.Logger.Common.LogEventPropertyTypes;
 using Serilog.Core;
 using Serilog.Events;
 using System;
 
 namespace Presentation.Logger.Enrichers;
 
-internal class LogGuidEnricher : ILogEventEnricher
+internal class LogGuidEnricher(IConfiguration configuration) : ILogEventEnricher
 {
+    private readonly IConfiguration _configuration = configuration;
+
     private const string ValueTypeIdentifier = "ValueProperty";
     private readonly Dictionary<string, ILogEventPropertyParser> _propertyParserMap = new()
     {
@@ -21,16 +24,22 @@ internal class LogGuidEnricher : ILogEventEnricher
         [StringPropertyParser.Default.TypeIdentifier] = StringPropertyParser.Default,
     };
 
-    private static bool HasHeadRuntimeLogs = false;
+    private static bool _hasHeadRuntimeLogs = false;
+    private static Guid? _runtimeGuid = null;
 
     public void Enrich(LogEvent evt, ILogEventPropertyFactory _)
     {
+        if (_runtimeGuid == null)
+        {
+            _runtimeGuid = _configuration.GetRuntimeGuid();
+        }
+
         AddProperty(evt, "EventGuid", Guid.NewGuid(), false);
-        AddProperty(evt, "RuntimeGuid", Defaults.RuntimeGuid, false);
-        if (!HasHeadRuntimeLogs)
+        AddProperty(evt, "RuntimeGuid", _runtimeGuid.Value, false);
+        if (!_hasHeadRuntimeLogs)
         {
             AddProperty(evt, "IsHeadLog", true, false);
-            HasHeadRuntimeLogs = true;
+            _hasHeadRuntimeLogs = true;
         }
         List<LogEventProperty> propsToAdd = [];
         foreach (var prop in evt.Properties)

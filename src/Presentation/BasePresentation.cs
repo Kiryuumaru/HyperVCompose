@@ -24,15 +24,16 @@ internal class BasePresentation : BaseApplication
         base.AddConfiguration(builder, configuration);
 
         (configuration as ConfigurationManager)!.AddEnvironmentVariables();
-
-        (builder.Builder as WebApplicationBuilder)!.Host.UseSerilog((context, loggerConfiguration) => LoggerBuilder.Configure(loggerConfiguration, configuration));
-
-        Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), configuration).CreateLogger();
     }
 
     public override void AddServices(ApplicationDependencyBuilder builder, IServiceCollection services)
     {
         base.AddServices(builder, services);
+
+        (builder.Builder as WebApplicationBuilder)!.Host
+            .UseSerilog((context, loggerConfiguration) => LoggerBuilder.Configure(loggerConfiguration, builder.Configuration));
+
+        Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), builder.Configuration).CreateLogger();
 
         services.AddMvc();
         services.AddControllers();

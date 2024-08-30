@@ -20,7 +20,7 @@ internal class DamperWorker(ILogger<DamperWorker> logger, IServiceProvider servi
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        RoutineExecutor.Execute(TimeSpan.FromMilliseconds(50), false, stoppingToken, Routine, ex => _logger.LogError("Runner error: {msg}", ex.Message));
+        RoutineExecutor.Execute(TimeSpan.FromMilliseconds(50), false, Routine, ex => _logger.LogError("Runner error: {msg}", ex.Message), stoppingToken);
         return Task.CompletedTask;
     }
 

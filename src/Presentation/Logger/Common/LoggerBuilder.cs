@@ -14,6 +14,7 @@ using Presentation.Common;
 using Presentation.Logger.Enrichers;
 using Presentation.Logger.Common;
 using Serilog.Sinks.SystemConsole.Themes;
+using Application.Configuration.Extensions;
 
 namespace Presentation.Logger.Common;
 
@@ -42,24 +43,24 @@ internal static class LoggerBuilder
         });
     }
 
-    public static LoggerConfiguration Configure(LoggerConfiguration loggerConfiguration, IConfiguration? configuration = null)
+    public static LoggerConfiguration Configure(LoggerConfiguration loggerConfiguration, IConfiguration configuration)
     {
         loggerConfiguration = loggerConfiguration
             .MinimumLevel.Information()
             .Enrich.FromLogContext()
-            .Enrich.With(new LogGuidEnricher())
+            .Enrich.With(new LogGuidEnricher(configuration))
             .WriteTo.Console(
                 outputTemplate: "{Timestamp:u} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                 restrictedToMinimumLevel: LogEventLevel.Debug,
                 theme: Theme());
-
+        
         if (configuration?.GetVarRefValueOrDefault("MAKE_LOGS", "no").Equals("svc", StringComparison.InvariantCultureIgnoreCase) ?? false)
         {
             loggerConfiguration = loggerConfiguration
                 .MinimumLevel.Verbose()
                 .WriteTo.File(
                     formatter: new CompactJsonFormatter(),
-                    path: Defaults.DataPath / "logs" / "log-.jsonl",
+                    path: configuration.GetDataPath() / "logs" / "log-.jsonl",
                     restrictedToMinimumLevel: LogEventLevel.Debug,
                     rollingInterval: RollingInterval.Hour);
         }

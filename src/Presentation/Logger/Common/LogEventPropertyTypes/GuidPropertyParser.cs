@@ -1,6 +1,6 @@
 ﻿using Presentation.Logger.Abstractions;
 
-namespace Presentation.Logger.LogEventPropertyTypes;
+namespace Presentation.Logger.Common.LogEventPropertyTypes;
 
 internal class GuidPropertyParser : LogEventPropertyParser<Guid>
 {

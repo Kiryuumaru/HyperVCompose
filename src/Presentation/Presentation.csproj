@@ -25,7 +25,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Application\Application.csproj" />
-		<ProjectReference Include="..\Infrastructure.SQLite\Infrastructure.SQLite.csproj" />
+		<ProjectReference Include="..\Infrastructure.SQLite.LocalStore\Infrastructure.SQLite.LocalStore.csproj" />
 	</ItemGroup>
 
 </Project>

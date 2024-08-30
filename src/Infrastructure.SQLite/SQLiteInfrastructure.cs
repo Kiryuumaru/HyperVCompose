@@ -1,14 +1,16 @@
 ﻿using Application.LocalStore.Interfaces;
 using ApplicationBuilderHelpers;
+using Infrastructure.SQLite.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.SQLite;
 
-public class SQLiteApplication : ApplicationDependency
+public class SQLiteInfrastructure : ApplicationDependency
 {
     public override void AddServices(ApplicationDependencyBuilder builder, IServiceCollection services)
     {
-        services.AddSingleton<SQLiteLocalStore>();
-        services.AddScoped<ILocalStore, SQLiteLocalStoreProxy>();
+        base.AddServices(builder, services);
+
+        services.AddSingleton<SQLiteGlobalService>();
     }
 }
