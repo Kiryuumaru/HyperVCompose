@@ -76,10 +76,6 @@ internal class LogGuidEnricher : ILogEventEnricher
         {
             return [];
         }
-        if (valueType == typeof(string))
-        {
-
-        }
 
         LogEventProperty? logEventProperty = null;
         LogEventProperty? logEventIdentifierKey = null;
