@@ -29,12 +29,16 @@ internal class DamperWorker(ILogger<DamperWorker> logger, IServiceProvider servi
         var val = DateTimeOffset.UtcNow;
 
         _logger.LogTrace("I am debug {val}", val);
+        await Task.Delay(250, stoppingToken);
         _logger.LogDebug("I am debug {val}", val);
+        await Task.Delay(250, stoppingToken);
         _logger.LogInformation("I am info {val}", val);
+        await Task.Delay(250, stoppingToken);
         _logger.LogWarning("I am warning {val}", val);
+        await Task.Delay(250, stoppingToken);
         _logger.LogError("I am error {val}", val);
+        await Task.Delay(250, stoppingToken);
         _logger.LogCritical("I am critical {val}", val);
-
-        await Task.Delay(1000, stoppingToken);
+        await Task.Delay(250, stoppingToken);
     }
 }

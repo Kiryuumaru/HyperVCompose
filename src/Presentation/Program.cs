@@ -36,7 +36,12 @@ return await parserResult
         {
             if (Validate(parserResult, opts))
             {
-                ApplicationDependencyBuilder.FromBuilder(WebApplication.CreateBuilder(args))
+                var builder = WebApplication.CreateBuilder(args);
+                if (opts.AsService)
+                {
+                    builder.Configuration["MAKE_LOGS"] = "svc";
+                }
+                ApplicationDependencyBuilder.FromBuilder(builder)
                     .Add<BasePresentation>()
                     .Add<SQLiteApplication>()
                     .Run();
@@ -140,6 +145,9 @@ bool Validate<T>(ParserResult<T> parserResult, IArgumentValidation argsToValidat
 [Verb("run", HelpText = "Run application")]
 class RunOption : IArgumentValidation
 {
+    [Option('s', "as-service", Required = false, HelpText = "Run as service mode.")]
+    public bool AsService { get; set; }
+
     public void Validate()
     {
     }

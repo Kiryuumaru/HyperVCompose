@@ -24,7 +24,8 @@ internal class LogsExtension
         void printLogEvent(LogEvent logEvent)
         {
             if (logEvent.Properties.TryGetValue("IsHeadLog", out var isHeadLogProp) &&
-                bool.TryParse(isHeadLogProp.Cast<ScalarValue>().Value?.ToString()!, out bool isHeadLog) &&
+                isHeadLogProp is ScalarValue isHeadLogScalar &&
+                bool.TryParse(isHeadLogScalar.Value?.ToString()!, out bool isHeadLog) &&
                 isHeadLog &&
                 logEvent.Properties.TryGetValue("RuntimeGuid", out var runtimeGuidProp) &&
                 Guid.TryParse(runtimeGuidProp.Cast<ScalarValue>().Value?.ToString()!, out var runtimeGuid))
@@ -35,7 +36,8 @@ internal class LogsExtension
                 Log.Write(FromLogEvent(logEvent, "===================================================="));
             }
             if (logEvent.Properties.TryGetValue("EventGuid", out var eventGuidProp) &&
-                Guid.TryParse(eventGuidProp.Cast<ScalarValue>().Value?.ToString()!, out var eventGuid))
+                eventGuidProp is ScalarValue eventGuidScalar &&
+                Guid.TryParse(eventGuidScalar.Value?.ToString()!, out var eventGuid))
             {
                 lastLog = eventGuid;
             }
@@ -101,14 +103,6 @@ internal class LogsExtension
                     hasPrintedTail = true;
                 }
 
-                var wh = new AutoResetEvent(false);
-                var fsw = new FileSystemWatcher(logFile)
-                {
-                    Filter = logFile,
-                    EnableRaisingEvents = true
-                };
-                fsw.Changed += (s, e) => wh.Set();
-
                 while (!ct.IsCancellationRequested)
                 {
                     string? line = await streamReader.ReadLineAsync(ct);
@@ -118,7 +112,7 @@ internal class LogsExtension
                     }
                     else
                     {
-                        wh.WaitOne(1000);
+                        await Task.Delay(100);
                     }
                 }
             }

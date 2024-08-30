@@ -12,7 +12,7 @@
     },
     "https": {
       "commandName": "Project",
-      "commandLineArgs": "logs -f -t 1000 -l verbose",
+      "commandLineArgs": "run -s",
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
