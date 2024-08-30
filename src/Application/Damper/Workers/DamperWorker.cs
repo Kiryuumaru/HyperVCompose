@@ -20,7 +20,7 @@ internal class DamperWorker(ILogger<DamperWorker> logger, IServiceProvider servi
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        RoutineExecutor.Execute(TimeSpan.FromSeconds(5), false, stoppingToken, Routine, ex => _logger.LogError("Runner error: {msg}", ex.Message));
+        RoutineExecutor.Execute(TimeSpan.FromMilliseconds(500), false, stoppingToken, Routine, ex => _logger.LogError("Runner error: {msg}", ex.Message));
         return Task.CompletedTask;
     }
 
@@ -29,16 +29,16 @@ internal class DamperWorker(ILogger<DamperWorker> logger, IServiceProvider servi
         var val = DateTimeOffset.UtcNow;
 
         _logger.LogTrace("I am debug {val}", val);
-        await Task.Delay(250, stoppingToken);
+        await Task.Delay(100, stoppingToken);
         _logger.LogDebug("I am debug {val}", val);
-        await Task.Delay(250, stoppingToken);
+        await Task.Delay(100, stoppingToken);
         _logger.LogInformation("I am info {val}", val);
-        await Task.Delay(250, stoppingToken);
+        await Task.Delay(100, stoppingToken);
         _logger.LogWarning("I am warning {val}", val);
-        await Task.Delay(250, stoppingToken);
+        await Task.Delay(100, stoppingToken);
         _logger.LogError("I am error {val}", val);
-        await Task.Delay(250, stoppingToken);
+        await Task.Delay(100, stoppingToken);
         _logger.LogCritical("I am critical {val}", val);
-        await Task.Delay(250, stoppingToken);
+        await Task.Delay(100, stoppingToken);
     }
 }
