@@ -8,6 +8,7 @@ using CommandLine.Text;
 using Infrastructure.SQLite;
 using Presentation;
 using Presentation.Common;
+using Presentation.Logger;
 using Presentation.Logger.Common;
 using Serilog;
 using Serilog.Core;
@@ -53,11 +54,11 @@ return await parserResult
                 {
                     if (opts.Install)
                     {
-                        await ServiceManager.InstallAsService(ct);
+                        await ServiceExtension.InstallAsService(ct);
                     }
                     else if (opts.Uninstall)
                     {
-                        await ServiceManager.UninstallAsService(ct);
+                        await ServiceExtension.UninstallAsService(ct);
                     }
                 }
                 catch (OperationCanceledException) { }
@@ -75,7 +76,7 @@ return await parserResult
                         .MinimumLevel.Is(opts.LogLevel)
                         .CreateLogger();
                     var ct = SetCancellableConsole();
-                    await ServiceManager.Logs(opts.Tail, opts.Follow, ct);
+                    await LogsExtension.Logs(opts.Tail, opts.Follow, ct);
                 }
                 catch (OperationCanceledException) { }
                 return 0;

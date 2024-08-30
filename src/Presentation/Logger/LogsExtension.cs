@@ -12,158 +12,34 @@ using System.Globalization;
 using System.IO;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
 
-namespace Presentation.Common;
+namespace Presentation.Logger;
 
-internal static class ServiceManager
+internal class LogsExtension
 {
-    public static async Task InstallAsService(CancellationToken cancellationToken)
-    {
-        Log.Information("Installing service...");
-
-        await PrepareSvc(cancellationToken);
-
-        var winswExecPath = AbsolutePath.Create(Environment.CurrentDirectory) / "winsw.exe";
-        var serviceConfig = AbsolutePath.Create(Environment.CurrentDirectory) / "svc.xml";
-
-        try
-        {
-            await Cli.RunOnce($"{winswExecPath} stop {serviceConfig} --force", stoppingToken: cancellationToken);
-            await Cli.RunOnce($"{winswExecPath} uninstall {serviceConfig}", stoppingToken: cancellationToken);
-        }
-        catch { }
-        await Cli.RunOnce($"{winswExecPath} install {serviceConfig}", stoppingToken: cancellationToken);
-        await Cli.RunOnce($"{winswExecPath} start {serviceConfig}", stoppingToken: cancellationToken);
-
-        Log.Information("Installing service done");
-    }
-
-    public static async Task UninstallAsService(CancellationToken cancellationToken)
-    {
-        Log.Information("Uninstalling service...");
-
-        await PrepareSvc(cancellationToken);
-
-        var winswExecPath = AbsolutePath.Create(Environment.CurrentDirectory) / "winsw.exe";
-        var serviceConfig = AbsolutePath.Create(Environment.CurrentDirectory) / "svc.xml";
-
-        try
-        {
-            await Cli.RunOnce($"{winswExecPath} stop {serviceConfig} --force", stoppingToken: cancellationToken);
-        }
-        catch { }
-        await Cli.RunOnce($"{winswExecPath} uninstall {serviceConfig}", stoppingToken: cancellationToken);
-
-        Log.Information("Uninstalling service done");
-    }
-
-    private static async Task PrepareSvc(CancellationToken cancellationToken)
-    {
-        var winswExecPath = AbsolutePath.Create(Environment.CurrentDirectory) / "winsw.exe";
-        if (!File.Exists(winswExecPath))
-        {
-            string folderName;
-            if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
-            {
-                folderName = "winsw_windows_x64";
-            }
-            else if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
-            {
-                folderName = "winsw_windows_arm64";
-            }
-            else
-            {
-                throw new NotSupportedException();
-            }
-            string dlUrl = $"https://github.com/Kiryuumaru/winsw-modded/releases/download/build.1/{folderName}.zip";
-            var downloadsPath = AbsolutePath.Create(Environment.CurrentDirectory) / "downloads";
-            var winswZipPath = downloadsPath / "winsw.zip";
-            var winswZipExtractPath = downloadsPath / "winsw";
-            var winswDownloadedExecPath = winswZipExtractPath / folderName / "winsw.exe";
-            try
-            {
-                await winswZipPath.Delete(cancellationToken);
-            }
-            catch { }
-            try
-            {
-                await winswZipExtractPath.Delete(cancellationToken);
-            }
-            catch { }
-            downloadsPath.CreateDirectory();
-            winswZipExtractPath.CreateDirectory();
-            {
-                using var client = new HttpClient();
-                using var s = await client.GetStreamAsync(dlUrl, cancellationToken: cancellationToken);
-                using var fs = new FileStream(winswZipPath, FileMode.OpenOrCreate);
-                await s.CopyToAsync(fs, cancellationToken: cancellationToken);
-            }
-            await winswZipPath.UnZipTo(winswZipExtractPath, cancellationToken);
-            await winswDownloadedExecPath.CopyTo(winswExecPath, cancellationToken);
-        }
-
-        var config = """
-            <service>
-              <id>hyperv-composer</id>
-              <name>Hyper-V Composer</name>
-              <description>Hyper-V Composer API Service for managing Hyper-V VM instances</description>
-              <executable>%BASE%\HyperVCompose.exe</executable>
-              <arguments>run</arguments>
-              <log mode="none"></log>
-              <startmode>Automatic</startmode>
-              <onfailure action="restart" delay="2 sec"/>
-              <env name="ASPNETCORE_URLS" value="http://*:23456" />
-              <env name="MAKE_LOGS" value="svc" />
-            </service>
-            """;
-
-        var serviceConfig = AbsolutePath.Create(Environment.CurrentDirectory) / "svc.xml";
-        await File.WriteAllTextAsync(serviceConfig, config, cancellationToken);
-    }
-
-    private static LogEvent FromLogEvent(LogEvent baseLogEvent, string text, params (string Key, object Value)[] properties)
-    {
-        var props = baseLogEvent.Properties
-            .Where(i => i.Key != "EventGuid")
-            .Select(i => new LogEventProperty(i.Key, i.Value))
-            .ToList();
-        props.Add(new LogEventProperty("EventGuid", new ScalarValue(Guid.NewGuid())));
-        foreach (var (Key, Value) in properties)
-        {
-            props.Add(new LogEventProperty(Key, new ScalarValue(Value)));
-        }
-        return new LogEvent(baseLogEvent.Timestamp, LogEventLevel.Information, null, new MessageTemplateParser().Parse(text), props);
-    }
-
     public static async Task Logs(int tail, bool follow, CancellationToken cancellationToken)
     {
         CancellationTokenSource? logFileCts = null;
         Guid lastLog = Guid.Empty;
         void printLogEvent(LogEvent logEvent)
         {
-            try
+            if (logEvent.Properties.TryGetValue("IsHeadLog", out var isHeadLogProp) &&
+                bool.TryParse(isHeadLogProp.Cast<ScalarValue>().Value?.ToString()!, out bool isHeadLog) &&
+                isHeadLog &&
+                logEvent.Properties.TryGetValue("RuntimeGuid", out var runtimeGuidProp) &&
+                Guid.TryParse(runtimeGuidProp.Cast<ScalarValue>().Value?.ToString()!, out var runtimeGuid))
             {
-                try
-                {
-                    if (bool.Parse(logEvent.Properties["IsHeadLog"].Cast<ScalarValue>().Value?.ToString()!))
-                    {
-                        var runtimeGuid = Guid.Parse(logEvent.Properties["RuntimeGuid"].Cast<ScalarValue>().Value?.ToString()!);
-                        Log.Write(FromLogEvent(logEvent, "===================================================="));
-                        Log.Write(FromLogEvent(logEvent, " Service started: {timestamp}", ("timestamp", logEvent.Timestamp)));
-                        Log.Write(FromLogEvent(logEvent, " Runtime ID: {runtimeGuid}", ("runtimeGuid", runtimeGuid)));
-                        Log.Write(FromLogEvent(logEvent, "===================================================="));
-                    }
-                }
-                catch { }
-                try
-                {
-                    var lastLog = Guid.Parse(logEvent.Properties["EventGuid"].Cast<ScalarValue>().Value?.ToString()!);
-                }
-                catch { }
-                Log.Write(logEvent);
+                Log.Write(FromLogEvent(logEvent, "===================================================="));
+                Log.Write(FromLogEvent(logEvent, " Service started: {timestamp}", ("timestamp", logEvent.Timestamp)));
+                Log.Write(FromLogEvent(logEvent, " Runtime ID: {runtimeGuid}", ("runtimeGuid", runtimeGuid)));
+                Log.Write(FromLogEvent(logEvent, "===================================================="));
             }
-            catch { }
+            if (logEvent.Properties.TryGetValue("EventGuid", out var eventGuidProp) &&
+                Guid.TryParse(eventGuidProp.Cast<ScalarValue>().Value?.ToString()!, out var eventGuid))
+            {
+                lastLog = eventGuid;
+            }
+            Log.Write(logEvent);
         }
         void printLogEventStr(string? logEventStr)
         {
@@ -225,13 +101,43 @@ internal static class ServiceManager
                     hasPrintedTail = true;
                 }
 
+                var wh = new AutoResetEvent(false);
+                var fsw = new FileSystemWatcher(logFile)
+                {
+                    Filter = logFile,
+                    EnableRaisingEvents = true
+                };
+                fsw.Changed += (s, e) => wh.Set();
+
                 while (!ct.IsCancellationRequested)
                 {
-                    printLogEventStr(await streamReader.ReadLineAsync(ct));
+                    string? line = await streamReader.ReadLineAsync(ct);
+                    if (line != null)
+                    {
+                        printLogEventStr(line);
+                    }
+                    else
+                    {
+                        wh.WaitOne(1000);
+                    }
                 }
             }
             catch { }
         }, cancellationToken);
+    }
+
+    private static LogEvent FromLogEvent(LogEvent baseLogEvent, string text, params (string Key, object Value)[] properties)
+    {
+        var props = baseLogEvent.Properties
+            .Where(i => i.Key != "EventGuid")
+            .Select(i => new LogEventProperty(i.Key, i.Value))
+            .ToList();
+        props.Add(new LogEventProperty("EventGuid", new ScalarValue(Guid.NewGuid())));
+        foreach (var (Key, Value) in properties)
+        {
+            props.Add(new LogEventProperty(Key, new ScalarValue(Value)));
+        }
+        return new LogEvent(baseLogEvent.Timestamp, LogEventLevel.Information, null, new MessageTemplateParser().Parse(text), props);
     }
 
     private static async Task<List<LogEvent>> GetLogEvents(int count, CancellationToken cancellationToken)
