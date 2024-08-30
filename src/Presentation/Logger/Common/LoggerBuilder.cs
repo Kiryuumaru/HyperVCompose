@@ -61,7 +61,7 @@ internal static class LoggerBuilder
                     formatter: new CompactJsonFormatter(),
                     path: Defaults.DataPath / "logs" / "log-.jsonl",
                     restrictedToMinimumLevel: LogEventLevel.Debug,
-                    rollingInterval: RollingInterval.Day);
+                    rollingInterval: RollingInterval.Hour);
         }
 
         return loggerConfiguration;
