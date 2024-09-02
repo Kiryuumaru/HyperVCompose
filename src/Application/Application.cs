@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
 
-public class BaseApplication : ApplicationDependency
+public class Application : ApplicationDependency
 {
     public override void AddServices(ApplicationHostBuilder applicationHostBuilder, IServiceCollection services)
     {

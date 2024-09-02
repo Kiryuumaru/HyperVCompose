@@ -15,7 +15,7 @@ using Presentation.Common;
 
 namespace Presentation;
 
-internal class BasePresentation : BaseApplication
+internal class Presentation : Application.Application
 {
     public override void AddConfiguration(ApplicationHostBuilder applicationBuilder, IConfiguration configuration)
     {

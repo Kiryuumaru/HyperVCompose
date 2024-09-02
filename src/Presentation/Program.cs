@@ -23,7 +23,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 ApplicationHostBuilder<WebApplicationBuilder> appBuilder = ApplicationHost.FromBuilder(WebApplication.CreateBuilder(args))
-    .Add<BasePresentation>()
+    .Add<Presentation.Presentation>()
     .Add<SerilogInfrastructure>()
     .Add<SQLiteLocalStoreInfrastructure>();
 
