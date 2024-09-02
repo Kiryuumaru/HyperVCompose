@@ -1,8 +1,16 @@
 {
   "profiles": {
+    "logs": {
+      "commandName": "Project",
+      "commandLineArgs": "logs -f -t 1000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": true
+    },
     "http": {
       "commandName": "Project",
-      "commandLineArgs": "run",
+      "commandLineArgs": "run -s",
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {
@@ -13,7 +21,7 @@
     },
     "https": {
       "commandName": "Project",
-      "commandLineArgs": "logs -f -t 1000 -l verbose",
+      "commandLineArgs": "run -s",
       "launchBrowser": true,
       "launchUrl": "swagger",
       "environmentVariables": {

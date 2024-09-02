@@ -22,11 +22,10 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-ApplicationHost<WebApplicationBuilder> app = ApplicationHost.FromBuilder(WebApplication.CreateBuilder(args))
+ApplicationHostBuilder<WebApplicationBuilder> appBuilder = ApplicationHost.FromBuilder(WebApplication.CreateBuilder(args))
     .Add<BasePresentation>()
     .Add<SerilogInfrastructure>()
-    .Add<SQLiteLocalStoreInfrastructure>()
-    .Build();
+    .Add<SQLiteLocalStoreInfrastructure>();
 
 var parserResult = new Parser(with =>
     {
@@ -45,9 +44,10 @@ return await parserResult
             {
                 if (opts.AsService)
                 {
-                    app.Configuration["MAKE_LOGS"] = "svc";
+                    appBuilder.Configuration["MAKE_LOGS"] = "svc";
                 }
-                await app.Run();
+
+                await appBuilder.Build().Run();
                 return 0;
             }
             return -1;
@@ -78,7 +78,7 @@ return await parserResult
             if (Validate(parserResult, opts))
             {
                 var ct = SetupCli(opts.LogLevel);
-                using var scope = (app.Builder.Services as IServiceProvider).CreateScope();
+                using var scope = appBuilder.Build().Builder.Services.BuildServiceProvider().CreateScope();
                 var loggerReader = scope.ServiceProvider.GetRequiredService<ILoggerReader>();
                 try
                 {
