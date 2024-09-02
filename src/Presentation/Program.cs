@@ -22,6 +22,11 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
+ApplicationDependencyBuilderApp<WebApplicationBuilder> app = ApplicationDependencyBuilder.FromBuilder(WebApplication.CreateBuilder(args))
+    .Add<BasePresentation>()
+    .Add<SQLiteLocalStoreInfrastructure>()
+    .Build();
+
 var parserResult = new Parser(with =>
     {
         with.CaseInsensitiveEnumValues = true;
@@ -33,28 +38,24 @@ var parserResult = new Parser(with =>
 return await parserResult
     .WithNotParsed(_ => DisplayHelp(parserResult))
     .MapResult(
-        (RunOption opts) =>
+        async (RunOption opts) =>
         {
             if (Validate(parserResult, opts))
             {
-                var builder = WebApplication.CreateBuilder(args);
                 if (opts.AsService)
                 {
-                    builder.Configuration["MAKE_LOGS"] = "svc";
+                    app.Configuration["MAKE_LOGS"] = "svc";
                 }
-                ApplicationDependencyBuilder.FromBuilder(builder)
-                    .Add<BasePresentation>()
-                    .Add<SQLiteLocalStoreInfrastructure>()
-                    .Run();
-                return Task.FromResult(0);
+                await app.Run();
+                return 0;
             }
-            return Task.FromResult(-1);
+            return -1;
         },
         async (ServiceOptions opts) =>
         {
             if (Validate(parserResult, opts))
             {
-                var (_, ct) = SetupCli(opts.LogLevel);
+                var ct = SetupCli(opts.LogLevel);
                 try
                 {
                     if (opts.Install)
@@ -75,10 +76,10 @@ return await parserResult
         {
             if (Validate(parserResult, opts))
             {
-                var (configuration, ct) = SetupCli(opts.LogLevel);
+                var ct = SetupCli(opts.LogLevel);
                 try
                 {
-                    await LogsExtension.Logs(configuration, opts.Tail, opts.Follow, ct);
+                    await LogsExtension.Logs(app.Configuration, opts.Tail, opts.Follow, ct);
                 }
                 catch (OperationCanceledException) { }
                 return 0;
@@ -87,23 +88,14 @@ return await parserResult
         },
         errs => Task.FromResult(-1));
 
-static (IConfiguration Configuration, CancellationToken CancellationToken) SetupCli(LogEventLevel logEventLevel)
+static CancellationToken SetupCli(LogEventLevel logEventLevel)
 {
-    var configuration = new ConfigurationBuilder()
-        .SetBasePath(Environment.CurrentDirectory)
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true, reloadOnChange: true)
-        .AddEnvironmentVariables()
-        .Build();
-    Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), configuration)
-        .MinimumLevel.Is(logEventLevel)
-        .CreateLogger();
     CancellationTokenSource cts = new();
     Console.CancelKeyPress += (s, e) =>
     {
         cts.Cancel();
     };
-    return (configuration, cts.Token);
+    return cts.Token;
 }
 
 void DisplayHelp<T>(ParserResult<T> result)
