@@ -7,9 +7,9 @@ namespace Infrastructure.SQLite;
 
 public class SQLiteInfrastructure : ApplicationDependency
 {
-    public override void AddServices(ApplicationDependencyBuilder builder, IServiceCollection services)
+    public override void AddServices(ApplicationHostBuilder applicationHostBuilder, IServiceCollection services)
     {
-        base.AddServices(builder, services);
+        base.AddServices(applicationHostBuilder, services);
 
         services.AddSingleton<SQLiteGlobalService>();
     }

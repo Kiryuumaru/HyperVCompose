@@ -7,9 +7,9 @@ namespace Application;
 
 public class BaseApplication : ApplicationDependency
 {
-    public override void AddServices(ApplicationDependencyBuilder builder, IServiceCollection services)
+    public override void AddServices(ApplicationHostBuilder applicationHostBuilder, IServiceCollection services)
     {
-        base.AddServices(builder, services);
+        base.AddServices(applicationHostBuilder, services);
 
         services.AddSingleton<LocalStoreConcurrencyService>();
         services.AddTransient<LocalStoreService>();

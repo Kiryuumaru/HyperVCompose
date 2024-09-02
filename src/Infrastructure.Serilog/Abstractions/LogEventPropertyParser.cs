@@ -1,4 +1,4 @@
-﻿namespace Presentation.Logger.Abstractions;
+﻿namespace Infrastructure.Serilog.Abstractions;
 
 internal interface ILogEventPropertyParser
 {

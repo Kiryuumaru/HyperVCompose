@@ -12,28 +12,21 @@ using Newtonsoft.Json.Linq;
 using Application.Common;
 using Microsoft.Extensions.Hosting;
 using Presentation.Common;
-using Presentation.Logger.Enrichers;
-using Presentation.Logger.Common;
 
 namespace Presentation;
 
 internal class BasePresentation : BaseApplication
 {
-    public override void AddConfiguration(ApplicationDependencyBuilder builder, IConfiguration configuration)
+    public override void AddConfiguration(ApplicationHostBuilder applicationBuilder, IConfiguration configuration)
     {
-        base.AddConfiguration(builder, configuration);
+        base.AddConfiguration(applicationBuilder, configuration);
 
         (configuration as ConfigurationManager)!.AddEnvironmentVariables();
     }
 
-    public override void AddServices(ApplicationDependencyBuilder builder, IServiceCollection services)
+    public override void AddServices(ApplicationHostBuilder applicationBuilder, IServiceCollection services)
     {
-        base.AddServices(builder, services);
-
-        (builder.Builder as WebApplicationBuilder)!.Host
-            .UseSerilog((context, loggerConfiguration) => LoggerBuilder.Configure(loggerConfiguration, builder.Configuration));
-
-        Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), builder.Configuration).CreateLogger();
+        base.AddServices(applicationBuilder, services);
 
         services.AddMvc();
         services.AddControllers();
@@ -57,9 +50,9 @@ internal class BasePresentation : BaseApplication
         });
     }
 
-    public override void AddMiddlewares(ApplicationDependencyBuilder builder, IHost host)
+    public override void AddMiddlewares(ApplicationHost applicationHost, IHost host)
     {
-        base.AddMiddlewares(builder, host);
+        base.AddMiddlewares(applicationHost, host);
 
         (host as IApplicationBuilder)!.UseSerilogRequestLogging();
 
@@ -69,9 +62,9 @@ internal class BasePresentation : BaseApplication
         (host as IApplicationBuilder)!.UseHttpsRedirection();
     }
 
-    public override void AddMappings(ApplicationDependencyBuilder builder, IHost host)
+    public override void AddMappings(ApplicationHost applicationHost, IHost host)
     {
-        base.AddMappings(builder, host);
+        base.AddMappings(applicationHost, host);
 
         (host as WebApplication)!.UseHttpsRedirection();
         (host as WebApplication)!.UseAuthorization();
@@ -79,9 +72,9 @@ internal class BasePresentation : BaseApplication
         (host as WebApplication)!.UseSerilogRequestLogging();
     }
 
-    public override void RunPreparation(ApplicationDependencyBuilder builder)
+    public override void RunPreparation(ApplicationHost applicationHost)
     {
-        base.RunPreparation(builder);
+        base.RunPreparation(applicationHost);
 
         Log.Information("Application starting");
     }

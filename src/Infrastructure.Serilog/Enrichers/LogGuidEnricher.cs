@@ -1,14 +1,14 @@
 ﻿using Application;
 using Application.Configuration.Extensions;
-using CommandLine;
+using Infrastructure.Serilog.Abstractions;
+using Infrastructure.Serilog.Common.LogEventPropertyTypes;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
-using Presentation.Logger.Abstractions;
-using Presentation.Logger.Common.LogEventPropertyTypes;
 using Serilog.Core;
 using Serilog.Events;
 using System;
 
-namespace Presentation.Logger.Enrichers;
+namespace Infrastructure.Serilog.Enrichers;
 
 internal class LogGuidEnricher(IConfiguration configuration) : ILogEventEnricher
 {
@@ -96,7 +96,7 @@ internal class LogGuidEnricher(IConfiguration configuration) : ILogEventEnricher
 
         if (existingTypeIdentifierKeyProp != null)
         {
-            realValuePropertyIdentifierKey = existingTypeIdentifierKeyProp.Cast<ScalarValue>().Value?.ToString()!;
+            realValuePropertyIdentifierKey = (existingTypeIdentifierKeyProp as ScalarValue)?.Value?.ToString()!;
         }
 
         realValuePropertyIdentifierKey ??= valueType.Name;

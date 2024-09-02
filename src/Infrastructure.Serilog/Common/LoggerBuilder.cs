@@ -10,13 +10,12 @@ using Serilog.Events;
 using Newtonsoft.Json.Linq;
 using Application.Common;
 using Microsoft.Extensions.Hosting;
-using Presentation.Common;
-using Presentation.Logger.Enrichers;
-using Presentation.Logger.Common;
 using Serilog.Sinks.SystemConsole.Themes;
 using Application.Configuration.Extensions;
+using Microsoft.Extensions.Configuration;
+using Infrastructure.Serilog.Enrichers;
 
-namespace Presentation.Logger.Common;
+namespace Infrastructure.Serilog.Common;
 
 internal static class LoggerBuilder
 {
@@ -53,7 +52,7 @@ internal static class LoggerBuilder
                 outputTemplate: "{Timestamp:u} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                 restrictedToMinimumLevel: LogEventLevel.Debug,
                 theme: Theme());
-        
+
         if (configuration?.GetVarRefValueOrDefault("MAKE_LOGS", "no").Equals("svc", StringComparison.InvariantCultureIgnoreCase) ?? false)
         {
             loggerConfiguration = loggerConfiguration

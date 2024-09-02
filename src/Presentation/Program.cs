@@ -1,17 +1,17 @@
 using AbsolutePathHelpers;
 using Application;
 using Application.Common;
+using Application.Logger.Interfaces;
 using ApplicationBuilderHelpers;
 using CliWrap.EventStream;
 using CommandLine;
 using CommandLine.Text;
+using Infrastructure.Serilog;
 using Infrastructure.SQLite;
 using Infrastructure.SQLite.LocalStore;
 using Microsoft.Extensions.Configuration;
 using Presentation;
 using Presentation.Common;
-using Presentation.Logger.Common;
-using Presentation.Logger.Extensions;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -22,8 +22,9 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-ApplicationDependencyBuilderApp<WebApplicationBuilder> app = ApplicationDependencyBuilder.FromBuilder(WebApplication.CreateBuilder(args))
+ApplicationHost<WebApplicationBuilder> app = ApplicationHost.FromBuilder(WebApplication.CreateBuilder(args))
     .Add<BasePresentation>()
+    .Add<SerilogInfrastructure>()
     .Add<SQLiteLocalStoreInfrastructure>()
     .Build();
 
@@ -77,9 +78,11 @@ return await parserResult
             if (Validate(parserResult, opts))
             {
                 var ct = SetupCli(opts.LogLevel);
+                using var scope = (app.Builder.Services as IServiceProvider).CreateScope();
+                var loggerReader = scope.ServiceProvider.GetRequiredService<ILoggerReader>();
                 try
                 {
-                    await LogsExtension.Logs(app.Configuration, opts.Tail, opts.Follow, ct);
+                    await loggerReader.Start(opts.Tail, opts.Follow, ct);
                 }
                 catch (OperationCanceledException) { }
                 return 0;

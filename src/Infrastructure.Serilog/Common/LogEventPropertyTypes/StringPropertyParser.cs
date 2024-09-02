@@ -1,6 +1,6 @@
-﻿using Presentation.Logger.Abstractions;
+﻿using Infrastructure.Serilog.Abstractions;
 
-namespace Presentation.Logger.Common.LogEventPropertyTypes;
+namespace Infrastructure.Serilog.Common.LogEventPropertyTypes;
 
 internal class StringPropertyParser : LogEventPropertyParser<string>
 {
