@@ -1,0 +1,272 @@
+
+
+$VMName="CC_default_1725358816150_81688"
+
+Set-VM -Name $VMName -AutomaticStopAction TurnOff
+Set-VM -Name $VMName -GuestControlledCacheTypes $True -LowMemoryMappedIoSpace 3Gb -HighMemoryMappedIoSpace 6Gb
+
+#Get-PnpDevice -Class Display | ForEach-Object { Write-Output "$($_.FriendlyName);$($_.DeviceId);$($_ | Get-PnpDeviceProperty DEVPKEY_Device_LocationPaths | Select-Object -ExpandProperty Data | Where-Object { $_ -like "PCIROOT*" })"; } | ConvertTo-Json
+
+Get-PnpDevice | Where-Object {$_.Present -eq $true} | Where-Object {$_.Class -eq "Display"}| select Name,InstanceId
+
+$GPUInstanceId="PCI\VEN_10DE&DEV_2544&SUBSYS_40E01458&REV_A1\4&8BD6E8D&0&0008"
+
+Get-PnpDeviceProperty -KeyName DEVPKEY_Device_LocationPaths -InstanceId $GPUInstanceId | select -Property Data | ConvertTo-Json
+
+$GPULocationPath="PCIROOT(0)#PCI(0100)#PCI(0000)"
+
+Disable-PnpDevice -InstanceId $GPUInstanceId -Confirm:$false -Verbose
+
+Dismount-VmHostAssignableDevice -LocationPath $GPULocationPath -Force -Verbose
+
+Add-VMAssignableDevice -VMName $VMName -LocationPath $GPULocationPath -Verbose
+
+Set-VM -VMName $VMName -DynamicMemory -MemoryMinimumBytes 1024MB -MemoryMaximumBytes 4096MB -MemoryStartupBytes 1024MB -AutomaticStopAction TurnOff
+Add-VMAssignableDevice -VMName $VMName -LocationPath $GPULocationPath -Verbose
+
+Start-VM -VMName $VMNam
+
+
+Remove-VMAssignableDevice -VMName $VMName -LocationPath $GPULocationPath -Verbose
+Mount-VMHostAssignableDevice -LocationPath $GPULocationPath
+
+
+https://gist.github.com/Ruffo324/1044ceea67d6dbc43d35cae8cb250212
+
+bcdedit /set hypervisoriommupolicy enable
+
+EnableVirtualizationBasedSecurity under HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard to 0 and restart the computer.
+If it does not exit you can create the DWORD value manually.
+
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell -c "& ([ScriptBlock]::Create((irm https://github.com/Microsoft/Virtualization-Documentation/blob/live/hyperv-tools/DiscreteDeviceAssignment/SurveyDDA.ps1)))"
+
+
+
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\HyperV" -Name "RequireSecureDeviceAssignment" -Type DWORD -Value 0 -Force
+
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\HyperV" -Name "RequireSupportedDeviceAssignment" -Type DWORD -Value 0 -Force
+
+
+
+
+Get-VMHostPartitionableGpu  
+
+Add-VMGpuPartitionAdapter -VMName $VMName
+
+Remove-VMGpuPartitionAdapter -VMName $VMName
+Add-VMGpuPartitionAdapter -VMName $VMName
+Set-VMGpuPartitionAdapter -VMName $VMName -MinPartitionVRAM 1
+Set-VMGpuPartitionAdapter -VMName $VMName -MaxPartitionVRAM 11
+Set-VMGpuPartitionAdapter -VMName $VMName -OptimalPartitionVRAM 10
+Set-VMGpuPartitionAdapter -VMName $VMName -MinPartitionEncode 1
+Set-VMGpuPartitionAdapter -VMName $VMName -MaxPartitionEncode 11
+Set-VMGpuPartitionAdapter -VMName $VMName -OptimalPartitionEncode 10
+Set-VMGpuPartitionAdapter -VMName $VMName -MinPartitionDecode 1
+Set-VMGpuPartitionAdapter -VMName $VMName -MaxPartitionDecode 11
+Set-VMGpuPartitionAdapter -VMName $VMName -OptimalPartitionDecode 10
+Set-VMGpuPartitionAdapter -VMName $VMName -MinPartitionCompute 1
+Set-VMGpuPartitionAdapter -VMName $VMName -MaxPartitionCompute 11
+Set-VMGpuPartitionAdapter -VMName $VMName -OptimalPartitionCompute 10
+Set-VM -GuestControlledCacheTypes $true -VMName $VMName
+Set-VM -LowMemoryMappedIoSpace 1Gb -VMName $VMName
+Set-VM -HighMemoryMappedIoSpace 32GB -VMName $VMName
+Start-VM -Name $VMName
+
+
+On your host machine, go to C:\Windows\System32\DriverStore\FileRepository\
+and copy the nv_dispi.inf_amd64 folder to C:\Windows\System32\HostDriverStore\FileRepository\ on your VM (This folder will not exist, so make sure to create it)
+Next you will need to copy C:\Windows\System32\nvapi64.dll file from your host to C:\Windows\System32\ on your VM
+And once that is done, you can restart the VM.
+You will also need to disable enhanced session and Checkpoints for the VM.
+
+
+#
+# These variables are device properties.  For people who are very
+# curious about this, you can download the Windows Driver Kit headers and
+# look for pciprop.h.  All of these are contained in that file.
+#
+$devpkey_PciDevice_DeviceType = "{3AB22E31-8264-4b4e-9AF5-A8D2D8E33E62}  1"
+$devpkey_PciDevice_BaseClass = "{3AB22E31-8264-4b4e-9AF5-A8D2D8E33E62}  3"
+$devpkey_PciDevice_RequiresReservedMemoryRegion = "{3AB22E31-8264-4b4e-9AF5-A8D2D8E33E62}  34"
+$devpkey_PciDevice_AcsCompatibleUpHierarchy = "{3AB22E31-8264-4b4e-9AF5-A8D2D8E33E62}  31"
+
+$devprop_PciDevice_DeviceType_PciConventional                        =   0
+$devprop_PciDevice_DeviceType_PciX                                   =   1
+$devprop_PciDevice_DeviceType_PciExpressEndpoint                     =   2
+$devprop_PciDevice_DeviceType_PciExpressLegacyEndpoint               =   3
+$devprop_PciDevice_DeviceType_PciExpressRootComplexIntegratedEndpoint=   4
+$devprop_PciDevice_DeviceType_PciExpressTreatedAsPci                 =   5
+$devprop_PciDevice_BridgeType_PciConventional                        =   6
+$devprop_PciDevice_BridgeType_PciX                                   =   7
+$devprop_PciDevice_BridgeType_PciExpressRootPort                     =   8
+$devprop_PciDevice_BridgeType_PciExpressUpstreamSwitchPort           =   9
+$devprop_PciDevice_BridgeType_PciExpressDownstreamSwitchPort         =  10
+$devprop_PciDevice_BridgeType_PciExpressToPciXBridge                 =  11
+$devprop_PciDevice_BridgeType_PciXToExpressBridge                    =  12
+$devprop_PciDevice_BridgeType_PciExpressTreatedAsPci                 =  13
+$devprop_PciDevice_BridgeType_PciExpressEventCollector               =  14
+
+$devprop_PciDevice_AcsCompatibleUpHierarchy_NotSupported             =   0
+$devprop_PciDevice_AcsCompatibleUpHierarchy_SingleFunctionSupported  =   1
+$devprop_PciDevice_AcsCompatibleUpHierarchy_NoP2PSupported           =   2
+$devprop_PciDevice_AcsCompatibleUpHierarchy_Supported                =   3
+
+#
+# These values are defined in the PCI spec, and are also published in wdm.h
+# of the Windows Driver Kit headers.
+#
+$devprop_PciDevice_BaseClass_DisplayCtlr                             =   3
+
+Write-Host "Executing SurveyDDA.ps1, revision 1"
+
+write-host "Generating a list of PCI Express endpoint devices"
+$pnpdevs = Get-PnpDevice -PresentOnly
+$pcidevs = $pnpdevs | Where-Object {$_.InstanceId -like "PCI*"}
+
+foreach ($pcidev in $pcidevs) {
+    Write-Host ""
+    Write-Host ""
+    Write-Host -ForegroundColor White -BackgroundColor Black $pcidev.FriendlyName
+
+    $rmrr =  ($pcidev | Get-PnpDeviceProperty $devpkey_PciDevice_RequiresReservedMemoryRegion).Data
+    if ($rmrr -ne 0) {
+        write-host -ForegroundColor Red -BackgroundColor Black "BIOS requires that this device remain attached to BIOS-owned memory.  Not assignable."
+        continue
+    }
+
+    $acsUp =  ($pcidev | Get-PnpDeviceProperty $devpkey_PciDevice_AcsCompatibleUpHierarchy).Data
+    if ($acsUp -eq $devprop_PciDevice_AcsCompatibleUpHierarchy_NotSupported) {
+        write-host -ForegroundColor Red -BackgroundColor Black "Traffic from this device may be redirected to other devices in the system.  Not assignable."
+        continue
+    }
+
+    $devtype = ($pcidev | Get-PnpDeviceProperty $devpkey_PciDevice_DeviceType).Data
+    if ($devtype -eq $devprop_PciDevice_DeviceType_PciExpressEndpoint) {
+        Write-Host "Express Endpoint -- more secure."
+    } else {
+        if ($devtype -eq $devprop_PciDevice_DeviceType_PciExpressRootComplexIntegratedEndpoint) {
+            Write-Host "Embedded Endpoint -- less secure."
+        } elseif ($devtype -eq $devprop_PciDevice_DeviceType_PciExpressLegacyEndpoint) {
+            $devBaseClass = ($pcidev | Get-PnpDeviceProperty $devpkey_PciDevice_BaseClass).Data
+
+            if ($devBaseClass -eq $devprop_PciDevice_BaseClass_DisplayCtlr) {
+                Write-Host "Legacy Express Endpoint -- graphics controller."
+            } else {
+                Write-Host -ForegroundColor Red -BackgroundColor Black "Legacy, non-VGA PCI device.  Not assignable."
+                continue
+            }
+        } else {
+            if ($devtype -eq $devprop_PciDevice_DeviceType_PciExpressTreatedAsPci) {
+                Write-Host -ForegroundColor Red -BackgroundColor Black "BIOS kept control of PCI Express for this device.  Not assignable."
+            } else {
+                Write-Host -ForegroundColor Red -BackgroundColor Black "Old-style PCI device, switch port, etc.  Not assignable."
+            }
+            continue
+        }
+    }
+
+    $locationpath = ($pcidev | get-pnpdeviceproperty DEVPKEY_Device_LocationPaths).data[0]
+
+    #
+    # If the device is disabled, we can't check the resources, report a warning and continue on.
+    #
+    #
+    if ($pcidev.ConfigManagerErrorCode -eq "CM_PROB_DISABLED")
+    {
+        Write-Host -ForegroundColor Yellow -BackgroundColor Black "Device is Disabled, unable to check resource requirements, it may be assignable."
+        Write-Host -ForegroundColor Yellow -BackgroundColor Black "Enable the device and rerun this script to confirm."
+        $locationpath
+        continue
+    }
+
+    #
+    # Now do a check for the interrupts that the device uses.  Line-based interrupts
+    # aren't assignable.
+    #
+    $doubleslashDevId = "*" + $pcidev.PNPDeviceID.Replace("\","\\") + "*"
+    $irqAssignments = gwmi -query "select * from Win32_PnPAllocatedResource" | Where-Object {$_.__RELPATH -like "*Win32_IRQResource*"} | Where-Object {$_.Dependent -like $doubleslashDevId}
+
+    #$irqAssignments | Format-Table -Property __RELPATH
+
+    if ($irqAssignments.length -eq 0) {
+        Write-Host -ForegroundColor Green -BackgroundColor Black "    And it has no interrupts at all -- assignment can work."
+    } else {
+        #
+        # Find the message-signaled interrupts.  They are reported with a really big number in
+        # decimal, one which always happens to start with "42949...".
+        #
+        $msiAssignments = $irqAssignments | Where-Object {$_.Antecedent -like "*IRQNumber=42949*"}
+    
+        #$msiAssignments | Format-Table -Property __RELPATH
+
+        if ($msiAssignments.length -eq 0) {
+            Write-Host -ForegroundColor Red -BackgroundColor Black "All of the interrupts are line-based, no assignment can work."
+            continue
+        } else {
+            Write-Host -ForegroundColor Green -BackgroundColor Black "    And its interrupts are message-based, assignment can work."
+        }
+    }
+
+    #
+    # Check how much MMIO space the device needs
+    # not strictly an issue devices, but very useful when you want to set MMIO gap sizes
+    #
+
+    $mmioAssignments = gwmi -query "select * from Win32_PnPAllocatedResource" | Where-Object {$_.__RELPATH -like "*Win32_DeviceMemoryAddress*"} | Where-Object {$_.Dependent -like $doubleslashDevId}
+    $mmioTotal = 0
+    foreach ($mem in $mmioAssignments) 
+    {
+        $baseAdd =$mem.Antecedent.SubString($mem.Antecedent.IndexOf("""")+1)
+        $baseAdd=$baseAdd.SubString(0,$baseAdd.IndexOf(""""))
+        $mmioRange = gwmi -query "select * from Win32_DeviceMemoryAddress" | Where-Object{$_.StartingAddress -like $baseAdd}
+        $mmioTotal = $mmioTotal + $mmioRange.EndingAddress - $mmioRange.StartingAddress
+    }
+    if ($mmioTotal -eq 0)
+    {
+        Write-Host -ForegroundColor Green -BackgroundColor Black "    And it has no MMIO space"
+    } else {
+  	     [int]$mmioMB = [math]::ceiling($mmioTotal / 1MB)
+        Write-Host -ForegroundColor Green -BackgroundColor Black "    And it requires at least:" $mmioMB "MB of MMIO gap space"
+    }
+    
+
+
+    #
+    # Print out the location path, as that's the way to refer to this device that won't
+    # change even if you add or remove devices from the machine or change the way that
+    # the BIOS is configured.
+    #
+    $locationpath
+}
+
+#
+# Now look at the host as a whole.  Asking whether the host supports SR-IOV
+# is mostly equivalent to asking whether it supports Discrete Device
+# Assignment.
+#
+if ((Get-VMHost).IovSupport -eq $false) {
+    Write-Host ""
+    write-host "Unfortunately, this machine doesn't support using them in a VM."
+    Write-Host ""
+    (Get-VMHost).IovSupportReasons
+}
+
+$vm = "CC_default_1725358816150_81688"
+Remove-VMGpuPartitionAdapter -VMName $vm
+Add-VMGpuPartitionAdapter -VMName $vm
+Set-VMGpuPartitionAdapter -VMName $vm -MinPartitionVRAM 1
+Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionVRAM 11
+Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionVRAM 10
+Set-VMGpuPartitionAdapter -VMName $vm -MinPartitionEncode 1
+Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionEncode 11
+Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionEncode 10
+Set-VMGpuPartitionAdapter -VMName $vm -MinPartitionDecode 1
+Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionDecode 11
+Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionDecode 10
+Set-VMGpuPartitionAdapter -VMName $vm -MinPartitionCompute 1
+Set-VMGpuPartitionAdapter -VMName $vm -MaxPartitionCompute 11
+Set-VMGpuPartitionAdapter -VMName $vm -OptimalPartitionCompute 10
+Set-VM -GuestControlledCacheTypes $true -VMName $vm
+Set-VM -LowMemoryMappedIoSpace 1Gb -VMName $vm
+Set-VM -HighMemoryMappedIoSpace 32GB -VMName $vm
+Start-VM -Name $vm

@@ -78,8 +78,8 @@ return await parserResult
             if (Validate(parserResult, opts))
             {
                 var ct = SetupCli(opts.LogLevel);
-                using var scope = appBuilder.Build().Builder.Services.BuildServiceProvider().CreateScope();
-                var loggerReader = scope.ServiceProvider.GetRequiredService<ILoggerReader>();
+                var host = appBuilder.Build();
+                var loggerReader = host.Host.Services.GetRequiredService<ILoggerReader>();
                 try
                 {
                     await loggerReader.Start(opts.Tail, opts.Follow, ct);
