@@ -4,6 +4,7 @@ using Infrastructure.Serilog.Common;
 using Infrastructure.Serilog.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Serilog;
 
 namespace Infrastructure.Serilog;
@@ -20,5 +21,12 @@ public class SerilogInfrastructure : ApplicationDependency
             .UseSerilog((context, loggerConfiguration) => LoggerBuilder.Configure(loggerConfiguration, applicationBuilder.Configuration));
 
         Log.Logger = LoggerBuilder.Configure(new LoggerConfiguration(), applicationBuilder.Configuration).CreateLogger();
+    }
+
+    public override void AddMiddlewares(ApplicationHost applicationHost, IHost host)
+    {
+        base.AddMiddlewares(applicationHost, host);
+
+        (host as IApplicationBuilder)!.UseSerilogRequestLogging();
     }
 }

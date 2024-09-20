@@ -53,6 +53,15 @@ jobs:
       NUKE_PRE_SETUP_BUILD_WINDOWS_ARM64_CHECKOUT_FETCH_DEPTH: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_BUILD_WINDOWS_ARM64_CHECKOUT_FETCH_DEPTH }}
       NUKE_PRE_SETUP_BUILD_WINDOWS_ARM64_CHECKOUT_FETCH_TAGS: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_BUILD_WINDOWS_ARM64_CHECKOUT_FETCH_TAGS }}
       NUKE_PRE_SETUP_BUILD_WINDOWS_ARM64_CHECKOUT_SUBMODULES: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_BUILD_WINDOWS_ARM64_CHECKOUT_SUBMODULES }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_CONDITION: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CONDITION }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_RUNS_ON: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_RUNS_ON }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_RUN_SCRIPT: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_RUN_SCRIPT }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_KEY: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_KEY }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_RESTORE_KEY: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_RESTORE_KEY }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_MAIN_RESTORE_KEY: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_MAIN_RESTORE_KEY }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_FETCH_DEPTH: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_FETCH_DEPTH }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_FETCH_TAGS: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_FETCH_TAGS }}
+      NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_SUBMODULES: ${{ steps.NUKE_RUN.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_SUBMODULES }}
   BUILD_WINDOWS_X64:
     name: '[Build] WindowsX64'
     runs-on: ${{ fromJson(needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_BUILD_WINDOWS_X64_RUNS_ON) }}
@@ -77,8 +86,8 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: managed-cicd-runner___BUILD_WINDOWS_X64
-        path: ./.nuke/temp/artifacts/*
+        name: build___hyperv-compose___BUILD_WINDOWS_X64
+        path: ./.nuke/temp/artifacts-upload/*
         if-no-files-found: error
         retention-days: 1
     needs:
@@ -110,13 +119,53 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: managed-cicd-runner___BUILD_WINDOWS_ARM64
-        path: ./.nuke/temp/artifacts/*
+        name: build___hyperv-compose___BUILD_WINDOWS_ARM64
+        path: ./.nuke/temp/artifacts-upload/*
         if-no-files-found: error
         retention-days: 1
     needs:
     - PRE_SETUP
     if: "! failure() && ! cancelled() && needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_BUILD_WINDOWS_ARM64_CONDITION == 'true'"
+    env:
+      NUKE_PRE_SETUP: ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP }}
+  PUBLISHBINARIES:
+    name: Publish - hyperv-compose (PublishBinaries)
+    runs-on: ${{ fromJson(needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_RUNS_ON) }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_FETCH_DEPTH }}
+        fetch-tags: ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_FETCH_TAGS }}
+        submodules: ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CHECKOUT_SUBMODULES }}
+        persist-credentials: true
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./.nuke/temp/artifacts-download
+        pattern: build___hyperv-compose___*
+    - name: Cache Run
+      uses: actions/cache@v4
+      with:
+        path: ./.nuke/temp/cache
+        key: ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_KEY }}
+        restore-keys: |-
+          ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_RESTORE_KEY }}
+          ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CACHE_MAIN_RESTORE_KEY }}
+    - id: NUKE_RUN
+      name: Run Nuke PipelineRunEntry
+      run: ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_RUN_SCRIPT }} PipelineRunEntry --args "run=publish;idsToRun=PublishBinaries"
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: publish___hyperv-compose___PUBLISHBINARIES
+        path: ./.nuke/temp/artifacts-upload/*
+        if-no-files-found: error
+        retention-days: 1
+    needs:
+    - PRE_SETUP
+    - BUILD_WINDOWS_X64
+    - BUILD_WINDOWS_ARM64
+    if: "! failure() && ! cancelled() && needs.PRE_SETUP.outputs.NUKE_PRE_SETUP_PUBLISHBINARIES_CONDITION == 'true' && needs.BUILD_WINDOWS_X64.result == 'success' && needs.BUILD_WINDOWS_ARM64.result == 'success'"
     env:
       NUKE_PRE_SETUP: ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP }}
   POST_SETUP:
@@ -134,6 +183,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ./.nuke/temp/artifacts-download
+        pattern: publish___*
     - name: Run Nuke PipelinePostSetup
       run: chmod +x ./build.sh && ./build.sh PipelinePostSetup
       env:
@@ -142,11 +192,13 @@ jobs:
     - PRE_SETUP
     - BUILD_WINDOWS_X64
     - BUILD_WINDOWS_ARM64
+    - PUBLISHBINARIES
     if: success() || failure() || always()
     timeout-minutes: 10
     env:
       NUKE_PRE_SETUP: ${{ needs.PRE_SETUP.outputs.NUKE_PRE_SETUP }}
       NUKE_RUN_RESULT_GITHUB_BUILD_WINDOWS_X64: ${{ needs.BUILD_WINDOWS_X64.result }}
       NUKE_RUN_RESULT_GITHUB_BUILD_WINDOWS_ARM64: ${{ needs.BUILD_WINDOWS_ARM64.result }}
+      NUKE_RUN_RESULT_GITHUB_PUBLISHBINARIES: ${{ needs.PUBLISHBINARIES.result }}
 env:
   NUKE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -27,13 +27,12 @@ class Build : BaseNukeBuildHelpers
     readonly string? GithubToken;
 
     BuildEntry BuildBinaries => _ => _
-        .AppId("managed-cicd-runner")
+        .AppId("hyperv-compose")
         .Matrix(archMatrix, (definitionArch, arch) =>
         {
             definitionArch.RunnerOS(RunnerOS.Windows2022);
             definitionArch.WorkflowId($"build_windows_{arch}");
             definitionArch.DisplayName($"[Build] Windows{arch.ToUpperInvariant()}");
-            definitionArch.ReleaseAsset(context => GetAssets(arch));
             definitionArch.Execute(async context =>
             {
                 var outAsset = GetOutAsset(arch);
@@ -64,6 +63,19 @@ class Build : BaseNukeBuildHelpers
                         .Replace("{{$rootextract}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}"));
                 }
             });
+        });
+
+    PublishEntry PublishBinaries => _ => _
+        .AppId("hyperv-compose")
+        .RunnerOS(RunnerOS.Windows2022)
+        .ReleaseAsset(() =>
+        {
+            List<AbsolutePath> paths = [];
+            foreach (var arch in archMatrix)
+            {
+                paths.AddRange(GetAssets(arch));
+            }
+            return [.. paths];
         });
 
     string GetVersion(IRunContext context)

@@ -108,12 +108,11 @@ internal static class ServiceExtension
               <name>Hyper-V Composer</name>
               <description>Hyper-V Composer API Service for managing Hyper-V VM instances</description>
               <executable>%BASE%\HyperVCompose.exe</executable>
-              <arguments>run</arguments>
+              <arguments>run -s</arguments>
               <log mode="none"></log>
               <startmode>Automatic</startmode>
               <onfailure action="restart" delay="2 sec"/>
               <env name="ASPNETCORE_URLS" value="http://*:23456" />
-              <env name="MAKE_LOGS" value="svc" />
             </service>
             """;
 

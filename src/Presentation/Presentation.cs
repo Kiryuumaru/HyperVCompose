@@ -54,8 +54,6 @@ internal class Presentation : Application.Application
     {
         base.AddMiddlewares(applicationHost, host);
 
-        (host as IApplicationBuilder)!.UseSerilogRequestLogging();
-
         (host as IApplicationBuilder)!.UseSwagger();
         (host as IApplicationBuilder)!.UseSwaggerUI();
 
@@ -69,7 +67,6 @@ internal class Presentation : Application.Application
         (host as WebApplication)!.UseHttpsRedirection();
         (host as WebApplication)!.UseAuthorization();
         (host as WebApplication)!.MapControllers();
-        (host as WebApplication)!.UseSerilogRequestLogging();
     }
 
     public override void RunPreparation(ApplicationHost applicationHost)
