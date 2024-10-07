@@ -12,6 +12,7 @@ using Newtonsoft.Json.Linq;
 using Application.Common;
 using Microsoft.Extensions.Hosting;
 using Presentation.Common;
+using Microsoft.Extensions.Options;
 
 namespace Presentation;
 
@@ -27,6 +28,11 @@ internal class Presentation : Application.Application
     public override void AddServices(ApplicationHostBuilder applicationBuilder, IServiceCollection services)
     {
         base.AddServices(applicationBuilder, services);
+
+        services.AddHttpClient(Options.DefaultName, client =>
+        {
+            client.DefaultRequestHeaders.Add("User-Agent", Defaults.AppNamePascalCase);
+        });
 
         services.AddMvc();
         services.AddControllers();

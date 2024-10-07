@@ -1,6 +1,7 @@
 using AbsolutePathHelpers;
 using Application;
 using Application.Common;
+using Application.Configuration.Extensions;
 using Application.Logger.Interfaces;
 using ApplicationBuilderHelpers;
 using CliWrap.EventStream;
@@ -22,17 +23,17 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-ApplicationHostBuilder<WebApplicationBuilder> appBuilder = ApplicationHost.FromBuilder(WebApplication.CreateBuilder(args))
+var appBuilder = ApplicationHost.FromBuilder(WebApplication.CreateBuilder(args))
     .Add<Presentation.Presentation>()
     .Add<SerilogInfrastructure>()
     .Add<SQLiteLocalStoreInfrastructure>();
 
 var parserResult = new Parser(with =>
-    {
-        with.CaseInsensitiveEnumValues = true;
-        with.CaseSensitive = false;
-        with.IgnoreUnknownArguments = false;
-    })
+{
+    with.CaseInsensitiveEnumValues = true;
+    with.CaseSensitive = false;
+    with.IgnoreUnknownArguments = false;
+})
     .ParseArguments<RunOption, ServiceOptions, LogsOptions>(args);
 
 return await parserResult
@@ -42,12 +43,14 @@ return await parserResult
         {
             if (Validate(parserResult, opts))
             {
+                var ct = SetupCli(opts.LogLevel);
+
                 if (opts.AsService)
                 {
-                    appBuilder.Configuration["MAKE_LOGS"] = "svc";
+                    appBuilder.Configuration.SetMakeFileLogs(true);
                 }
 
-                await appBuilder.Build().Run();
+                await appBuilder.Build().Run(ct);
                 return 0;
             }
             return -1;
@@ -82,7 +85,7 @@ return await parserResult
                 var loggerReader = host.Host.Services.GetRequiredService<ILoggerReader>();
                 try
                 {
-                    await loggerReader.Start(opts.Tail, opts.Follow, ct);
+                    await loggerReader.Start(opts.Tail, opts.Follow, opts.ScopePairs!, ct);
                 }
                 catch (OperationCanceledException) { }
                 return 0;
@@ -91,8 +94,19 @@ return await parserResult
         },
         errs => Task.FromResult(-1));
 
-static CancellationToken SetupCli(LogEventLevel logEventLevel)
+CancellationToken SetupCli(LogEventLevel logEventLevel)
 {
+    appBuilder.Configuration.SetLoggerLevel(logEventLevel switch
+    {
+        LogEventLevel.Verbose => LogLevel.Trace,
+        LogEventLevel.Debug => LogLevel.Debug,
+        LogEventLevel.Information => LogLevel.Information,
+        LogEventLevel.Warning => LogLevel.Warning,
+        LogEventLevel.Error => LogLevel.Error,
+        LogEventLevel.Fatal => LogLevel.Critical,
+        _ => throw new NotImplementedException(logEventLevel.ToString())
+    });
+
     CancellationTokenSource cts = new();
     Console.CancelKeyPress += (s, e) =>
     {
@@ -149,6 +163,9 @@ class RunOption : IArgumentValidation
     [Option('s', "as-service", Required = false, HelpText = "Run as service mode.")]
     public bool AsService { get; set; }
 
+    [Option('l', "level", Required = false, HelpText = "Level of logs to show.", Default = LogEventLevel.Information)]
+    public LogEventLevel LogLevel { get; set; }
+
     public void Validate()
     {
     }
@@ -187,8 +204,34 @@ class LogsOptions : IArgumentValidation
     [Option('l', "level", Required = false, HelpText = "Level of logs to show.", Default = LogEventLevel.Information)]
     public LogEventLevel LogLevel { get; set; }
 
+    [Option('s', "scope", Required = false, HelpText = "Scope of logs.")]
+    public IEnumerable<string>? Scope { get; set; }
+
+    public Dictionary<string, string>? ScopePairs { get; set; }
+
     public void Validate()
     {
+        Dictionary<string, string> scopePairs = [];
+        if (Scope != null)
+        {
+            foreach (var s in Scope)
+            {
+                try
+                {
+                    var pair = s.Split('=');
+                    if (pair.Length != 2)
+                    {
+                        throw new Exception();
+                    }
+                    scopePairs[pair[0]] = pair[1];
+                }
+                catch
+                {
+                    throw new ArgumentValidationException($"Invalid scope value {s}");
+                }
+            }
+        }
+        ScopePairs = scopePairs;
     }
 }
 

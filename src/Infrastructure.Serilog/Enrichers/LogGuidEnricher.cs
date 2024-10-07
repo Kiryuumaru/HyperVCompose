@@ -14,13 +14,16 @@ internal class LogGuidEnricher(IConfiguration configuration) : ILogEventEnricher
 {
     private readonly IConfiguration _configuration = configuration;
 
-    private const string ValueTypeIdentifier = "ValueProperty";
+    private const string ValueTypeIdentifier = "ValueType";
     private readonly Dictionary<string, ILogEventPropertyParser> _propertyParserMap = new()
     {
         [BooleanPropertyParser.Default.TypeIdentifier] = BooleanPropertyParser.Default,
         [DateTimeOffsetPropertyParser.Default.TypeIdentifier] = DateTimeOffsetPropertyParser.Default,
         [DateTimePropertyParser.Default.TypeIdentifier] = DateTimePropertyParser.Default,
         [GuidPropertyParser.Default.TypeIdentifier] = GuidPropertyParser.Default,
+        [IntPropertyParser.Default.TypeIdentifier] = IntPropertyParser.Default,
+        [LongPropertyParser.Default.TypeIdentifier] = LongPropertyParser.Default,
+        [ShortPropertyParser.Default.TypeIdentifier] = ShortPropertyParser.Default,
         [StringPropertyParser.Default.TypeIdentifier] = StringPropertyParser.Default,
     };
 
@@ -89,25 +92,25 @@ internal class LogGuidEnricher(IConfiguration configuration) : ILogEventEnricher
         LogEventProperty? logEventProperty = null;
         LogEventProperty? logEventIdentifierKey = null;
 
-        string? realValuePropertyIdentifierKey = null;
+        string? realValueTypeIdentifierKey = null;
 
         string valueTypeIdentifierKey = $"{ValueTypeIdentifier}__{key}";
         LogEventPropertyValue? existingTypeIdentifierKeyProp = evt.Properties.GetValueOrDefault(valueTypeIdentifierKey);
 
         if (existingTypeIdentifierKeyProp != null)
         {
-            realValuePropertyIdentifierKey = (existingTypeIdentifierKeyProp as ScalarValue)?.Value?.ToString()!;
+            realValueTypeIdentifierKey = (existingTypeIdentifierKeyProp as ScalarValue)?.Value?.ToString()!;
         }
 
-        realValuePropertyIdentifierKey ??= valueType.Name;
+        realValueTypeIdentifierKey ??= valueType.Name;
 
-        if (realValuePropertyIdentifierKey != null && _propertyParserMap.TryGetValue(realValuePropertyIdentifierKey, out var logEventPropertyParser))
+        if (realValueTypeIdentifierKey != null && _propertyParserMap.TryGetValue(realValueTypeIdentifierKey, out var logEventPropertyParser))
         {
             if (existingTypeIdentifierKeyProp == null)
             {
                 logEventIdentifierKey = new(valueTypeIdentifierKey, new ScalarValue(logEventPropertyParser.TypeIdentifier));
             }
-            if (realValuePropertyIdentifierKey != valueType.Name)
+            if (realValueTypeIdentifierKey != valueType.Name)
             {
                 logEventProperty = new(key, new ScalarValue(logEventPropertyParser.Parse(value?.ToString())));
             }

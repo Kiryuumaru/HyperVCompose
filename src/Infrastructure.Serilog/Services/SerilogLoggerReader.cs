@@ -20,50 +20,105 @@ internal class SerilogLoggerReader(IConfiguration configuration) : ILoggerReader
 {
     private readonly IConfiguration _configuration = configuration;
 
-    public async Task Start(int tail, bool follow, CancellationToken cancellationToken = default)
+    public async Task Start(int tail, bool follow, Dictionary<string, string> scope, CancellationToken cancellationToken = default)
     {
         CancellationTokenSource? logFileCts = null;
         Guid lastLog = Guid.Empty;
-        void printLogEvent(LogEvent logEvent)
+        Guid headruntimeGuid = Guid.Empty;
+        bool isWithinScope(LogEvent logEvent)
         {
-            if (logEvent.Properties.TryGetValue("IsHeadLog", out var isHeadLogProp) &&
-                isHeadLogProp is ScalarValue isHeadLogScalar &&
-                bool.TryParse(isHeadLogScalar.Value?.ToString()!, out bool isHeadLog) &&
-                isHeadLog &&
-                logEvent.Properties.TryGetValue("RuntimeGuid", out var runtimeGuidProp) &&
-                runtimeGuidProp is ScalarValue runtimeGuidScalar &&
-                Guid.TryParse(runtimeGuidScalar.Value?.ToString()!, out var runtimeGuid))
-            {
-                Log.Write(FromLogEvent(logEvent, "===================================================="));
-                Log.Write(FromLogEvent(logEvent, " Service started: {timestamp}", ("timestamp", logEvent.Timestamp)));
-                Log.Write(FromLogEvent(logEvent, " Runtime ID: {runtimeGuid}", ("runtimeGuid", runtimeGuid)));
-                Log.Write(FromLogEvent(logEvent, "===================================================="));
-            }
+            return scope.Count == 0 ||
+                scope.All(i =>
+                    logEvent.Properties.TryGetValue(i.Key, out var scopeProp) &&
+                    scopeProp is ScalarValue scopeScalar &&
+                    scopeScalar.Value?.ToString() == i.Value);
+        }
+        void stampLog(LogEvent logEvent)
+        {
             if (logEvent.Properties.TryGetValue("EventGuid", out var eventGuidProp) &&
                 eventGuidProp is ScalarValue eventGuidScalar &&
                 Guid.TryParse(eventGuidScalar.Value?.ToString()!, out var eventGuid))
             {
                 lastLog = eventGuid;
             }
+            if (logEvent.Properties.TryGetValue("IsHeadLog", out var isHeadLogProp) &&
+                isHeadLogProp is ScalarValue isHeadLogScalar &&
+                bool.TryParse(isHeadLogScalar.Value?.ToString()!, out bool isHeadLog) &&
+                isHeadLog &&
+                logEvent.Properties.TryGetValue("RuntimeGuid", out var runtimeGuidProp) &&
+                runtimeGuidProp is ScalarValue runtimeGuidScalar &&
+                Guid.TryParse(runtimeGuidScalar.Value?.ToString()!, out var runtimeGuid) &&
+                headruntimeGuid != runtimeGuid)
+            {
+                headruntimeGuid = runtimeGuid;
+                Log.Write(FromLogEvent(logEvent, "===================================================="));
+                Log.Write(FromLogEvent(logEvent, " Service started: {timestamp}", ("timestamp", logEvent.Timestamp)));
+                Log.Write(FromLogEvent(logEvent, " Runtime ID: {runtimeGuid}", ("runtimeGuid", runtimeGuid)));
+                Log.Write(FromLogEvent(logEvent, "===================================================="));
+            }
+        }
+        void printLogEvent(LogEvent logEvent)
+        {
             Log.Write(logEvent);
         }
-        void printLogEventStr(string? logEventStr)
+        async Task printLogEventTail(int count, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(logEventStr))
+            List<AbsolutePath> scannedLogFiles = [];
+            List<(bool WithinScope, LogEvent LogEvent)> logEvents = [];
+            int printedLines = 0;
+            while (true)
             {
-                return;
+                if (count <= printedLines)
+                {
+                    break;
+                }
+
+                var latestLogFile = await GetLatestLogFile([.. scannedLogFiles], cancellationToken);
+
+                if (latestLogFile == null)
+                {
+                    break;
+                }
+
+                scannedLogFiles.Add(latestLogFile);
+
+                using var fileStream = new FileStream(latestLogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var streamReader = new StreamReader(fileStream);
+
+                foreach (var line in (await streamReader.ReadToEndAsync(cancellationToken)).Split(Environment.NewLine).Reverse())
+                {
+                    if (count <= printedLines)
+                    {
+                        break;
+                    }
+                    LogEvent? logEvent = null;
+                    try
+                    {
+                        logEvent = LogEventReader.ReadFromString(line);
+                    }
+                    catch { }
+                    if (logEvent != null)
+                    {
+                        var inScope = isWithinScope(logEvent);
+                        logEvents.Add((inScope, logEvent));
+                        if (inScope)
+                        {
+                            printedLines++;
+                        }
+                    }
+                }
             }
-            try
+            foreach (var (withinScope, logEvent) in logEvents.ToArray().Reverse())
             {
-                printLogEvent(LogEventReader.ReadFromString(logEventStr));
+                stampLog(logEvent);
+                if (withinScope)
+                {
+                    printLogEvent(logEvent);
+                }
             }
-            catch { }
         }
 
-        foreach (var logEvent in await GetLogEvents(tail, cancellationToken))
-        {
-            printLogEvent(logEvent);
-        }
+        await printLogEventTail(tail, cancellationToken);
 
         if (!follow)
         {
@@ -111,10 +166,23 @@ internal class SerilogLoggerReader(IConfiguration configuration) : ILoggerReader
 
                 while (!ct.IsCancellationRequested)
                 {
-                    string? line = await streamReader.ReadLineAsync(ct);
-                    if (line != null)
+                    LogEvent? logEvent = null;
+                    try
                     {
-                        printLogEventStr(line);
+                        string? line = await streamReader.ReadLineAsync(ct);
+                        if (line != null)
+                        {
+                            logEvent = LogEventReader.ReadFromString(line);
+                        }
+                    }
+                    catch { }
+                    if (logEvent != null)
+                    {
+                        stampLog(logEvent);
+                        if (isWithinScope(logEvent))
+                        {
+                            printLogEvent(logEvent);
+                        }
                     }
                     else
                     {
@@ -138,51 +206,6 @@ internal class SerilogLoggerReader(IConfiguration configuration) : ILoggerReader
             props.Add(new LogEventProperty(Key, new ScalarValue(Value)));
         }
         return new LogEvent(baseLogEvent.Timestamp, LogEventLevel.Information, null, new MessageTemplateParser().Parse(text), props);
-    }
-
-    private async Task<List<LogEvent>> GetLogEvents(int count, CancellationToken cancellationToken)
-    {
-        List<LogEvent> logEvents = [];
-
-        List<AbsolutePath> scannedLogFiles = [];
-        int printedLines = 0;
-        while (true)
-        {
-            if (count <= printedLines)
-            {
-                break;
-            }
-
-            var latestLogFile = await GetLatestLogFile([.. scannedLogFiles], cancellationToken);
-
-            if (latestLogFile == null)
-            {
-                break;
-            }
-
-            scannedLogFiles.Add(latestLogFile);
-
-            using var fileStream = new FileStream(latestLogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var streamReader = new StreamReader(fileStream);
-
-            foreach (var line in (await streamReader.ReadToEndAsync(cancellationToken)).Split(Environment.NewLine).Reverse())
-            {
-                if (count <= printedLines)
-                {
-                    break;
-                }
-
-                try
-                {
-                    var logEvent = LogEventReader.ReadFromString(line);
-                    logEvents.Add(logEvent);
-                    printedLines++;
-                }
-                catch { }
-            }
-        }
-
-        return logEvents.ToArray().Reverse().ToList();
     }
 
     private async Task LatestFileListener(Action<AbsolutePath> onLogfileChanged, CancellationToken cancellationToken)
