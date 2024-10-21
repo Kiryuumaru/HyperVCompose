@@ -11,8 +11,8 @@ using Serilog.Events;
 using Newtonsoft.Json.Linq;
 using Application.Common;
 using Microsoft.Extensions.Hosting;
-using Presentation.Common;
 using Microsoft.Extensions.Options;
+using Presentation.Services;
 
 namespace Presentation;
 
@@ -28,6 +28,8 @@ internal class Presentation : Application.Application
     public override void AddServices(ApplicationHostBuilder applicationBuilder, IServiceCollection services)
     {
         base.AddServices(applicationBuilder, services);
+
+        services.AddScoped<ServiceManager>();
 
         services.AddHttpClient(Options.DefaultName, client =>
         {

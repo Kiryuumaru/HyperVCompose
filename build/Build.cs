@@ -19,12 +19,9 @@ class Build : BaseNukeBuildHelpers
 
     public override string[] EnvironmentBranches { get; } = ["prerelease", "master"];
 
-    public override string MainEnvironmentBranch => "master";
+    public override string MainEnvironmentBranch { get; } = "master";
 
     private static readonly string[] archMatrix = ["x64", "arm64"];
-
-    [SecretVariable("GITHUB_TOKEN")]
-    readonly string? GithubToken;
 
     BuildEntry BuildBinaries => _ => _
         .AppId("hyperv-compose")
@@ -50,7 +47,7 @@ class Build : BaseNukeBuildHelpers
                     .EnablePublishSingleFile()
                     .SetOutput(outPath));
 
-                await (outPath / "Presentation.exe").MoveTo(outPath / "HyperVCompose.exe");
+                await (outPath / "Presentation.exe").MoveTo(outPath / "hvc.exe");
 
                 archivePath.ZipTo(outAsset);
 
@@ -59,7 +56,7 @@ class Build : BaseNukeBuildHelpers
                     (OutputDirectory / $"installer_{arch}.ps1").WriteAllText((RootDirectory / "installerTemplate.ps1").ReadAllText()
                         .Replace("{{$repo}}", "Kiryuumaru/HyperVCompose")
                         .Replace("{{$appname}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}")
-                        .Replace("{{$appexec}}", "HyperVCompose.exe")
+                        .Replace("{{$appexec}}", "hvc.exe")
                         .Replace("{{$rootextract}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}"));
                 }
             });

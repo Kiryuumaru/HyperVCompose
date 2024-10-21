@@ -70,30 +70,34 @@ public static class ConfigurationExtensions
 
     public static bool GetMakeFileLogs(this IConfiguration configuration)
     {
-        return configuration.GetVarRefValueOrDefault($"{Defaults.AppNameUpperSnakeCase}_RUNNER_MAKE_LOGS", "no").Equals("yes", StringComparison.InvariantCultureIgnoreCase);
+        return configuration.GetVarRefValueOrDefault($"{Defaults.AppNameUpperSnakeCase}_MAKE_LOGS", "no").Equals("yes", StringComparison.InvariantCultureIgnoreCase);
     }
     public static void SetMakeFileLogs(this IConfiguration configuration, bool makeFileLogs)
     {
-        configuration[$"{Defaults.AppNameUpperSnakeCase}_RUNNER_MAKE_LOGS"] = makeFileLogs ? "yes" : "no";
+        configuration[$"{Defaults.AppNameUpperSnakeCase}_MAKE_LOGS"] = makeFileLogs ? "yes" : "no";
     }
 
     public static LogLevel GetLoggerLevel(this IConfiguration configuration)
     {
-        var loggerLevel = configuration.GetVarRefValueOrDefault($"{Defaults.AppNameUpperSnakeCase}_RUNNER_LOGGER_LEVEL", LogLevel.Information.ToString());
+        var loggerLevel = configuration.GetVarRefValueOrDefault($"{Defaults.AppNameUpperSnakeCase}_LOGGER_LEVEL", LogLevel.Information.ToString());
         return Enum.Parse<LogLevel>(loggerLevel);
     }
     public static void SetLoggerLevel(this IConfiguration configuration, LogLevel loggerLevel)
     {
-        configuration[$"{Defaults.AppNameUpperSnakeCase}_RUNNER_LOGGER_LEVEL"] = loggerLevel.ToString();
+        configuration[$"{Defaults.AppNameUpperSnakeCase}_LOGGER_LEVEL"] = loggerLevel.ToString();
+    }
+
+    public static AbsolutePath GetHomePath(this IConfiguration configuration)
+    {
+        return configuration.GetVarRefValue($"{Defaults.AppNameUpperSnakeCase}_HOME_PATH");
+    }
+    public static void SetHomePath(this IConfiguration configuration, AbsolutePath dataPath)
+    {
+        configuration[$"{Defaults.AppNameUpperSnakeCase}_HOME_PATH"] = dataPath;
     }
 
     public static AbsolutePath GetDataPath(this IConfiguration configuration)
     {
-        //return configuration.GetVarRefValueOrDefault($"{Defaults.AppNameUpperSnakeCase}_RUNNER_DATA_PATH", AbsolutePath.Create(Environment.CurrentDirectory) / ".data");
-        return configuration.GetVarRefValueOrDefault($"{Defaults.AppNameUpperSnakeCase}_RUNNER_DATA_PATH", AbsolutePath.Create($"C:\\{Defaults.AppNamePascalCase}") / ".data");
-    }
-    public static void SetDataPath(this IConfiguration configuration, AbsolutePath dataPath)
-    {
-        configuration[$"{Defaults.AppNameUpperSnakeCase}_RUNNER_DATA_PATH"] = dataPath;
+        return GetHomePath(configuration) / ".data";
     }
 }
