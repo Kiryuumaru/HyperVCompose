@@ -88,6 +88,63 @@ internal class ServiceManager(ILogger<ServiceManager> logger, IConfiguration con
         await File.WriteAllTextAsync(serviceConfig, config, cancellationToken);
     }
 
+    public async Task UpdateClient(CancellationToken cancellationToken)
+    {
+        using var _ = _logger.BeginScopeMap(new()
+        {
+            ["Service"] = nameof(ServiceManager),
+            ["ServiceManagerAction"] = nameof(UpdateClient)
+        });
+
+        var home = _configuration.GetHomePath();
+
+        var cliClientExec = home / "hvc.exe";
+
+        _logger.LogDebug("Service wrapper not found. Downloading...");
+
+        string folderName;
+        if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
+        {
+            folderName = "HyperVCompose_WindowsX64";
+        }
+        else if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
+        {
+            folderName = "HyperVCompose_WindowsARM64";
+        }
+        else
+        {
+            throw new NotSupportedException();
+        }
+        string dlUrl = $"https://github.com/Kiryuumaru/HyperVCompose/releases/latest/download/{folderName}.zip";
+        var downloadsPath = home / "downloads";
+        var winswZipPath = downloadsPath / "HyperVCompose.zip";
+        var winswZipExtractPath = downloadsPath / "HyperVCompose";
+        var winswDownloadedExecPath = winswZipExtractPath / folderName / "hvc.exe";
+        try
+        {
+            await winswZipPath.Delete(cancellationToken);
+        }
+        catch { }
+        try
+        {
+            await winswZipExtractPath.Delete(cancellationToken);
+        }
+        catch { }
+        downloadsPath.CreateDirectory();
+        winswZipExtractPath.CreateDirectory();
+        {
+            using var client = new HttpClient();
+            using var s = await client.GetStreamAsync(dlUrl, cancellationToken: cancellationToken);
+            using var fs = new FileStream(winswZipPath, FileMode.OpenOrCreate);
+            await s.CopyToAsync(fs, cancellationToken: cancellationToken);
+        }
+        await winswZipPath.UnZipTo(winswZipExtractPath, cancellationToken);
+        await cliClientExec.Delete(cancellationToken);
+        File.CreateSymbolicLink(cliClientExec, winswDownloadedExecPath);
+
+        _logger.LogDebug("Service wrapper downloaded");
+    }
+
     public async Task Install(string? username, string? password, CancellationToken cancellationToken)
     {
         using var _ = _logger.BeginScopeMap(new()
