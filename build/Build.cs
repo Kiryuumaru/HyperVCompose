@@ -60,7 +60,7 @@ class Build : BaseNukeBuildHelpers
                     .EnablePublishSingleFile()
                     .SetOutput(outPath));
 
-                await (outPath / "Presentation.exe").MoveTo(outPath / "hvcc.exe");
+                await (outPath / "hvcc.exe").MoveTo(outPath / "hvcc.exe");
 
                 archivePath.ZipTo(outAsset);
 
