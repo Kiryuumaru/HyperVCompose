@@ -54,7 +54,8 @@ class Build : BaseNukeBuildHelpers
                 if (context.TryGetVersionedContext(out var versioned))
                 {
                     (OutputDirectory / $"installer_{arch}.ps1").WriteAllText((RootDirectory / "installerTemplate.ps1").ReadAllText()
-                        .Replace("{{$repo}}", "Kiryuumaru/HyperVCompose")
+                        .Replace("{{$username}}", "Kiryuumaru")
+                        .Replace("{{$repo}}", "HyperVCompose")
                         .Replace("{{$appname}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}")
                         .Replace("{{$appexec}}", "hvc.exe")
                         .Replace("{{$rootextract}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}"));

@@ -1,9 +1,10 @@
+$username = '{{$username}}'
 $repo = '{{$repo}}'
 $appname = '{{$appname}}'
 $appexec = '{{$appexec}}'
 $rootextract = '{{$rootextract}}'
 
-$root = (Get-Item .).FullName
+$root = "$env:TEMP\$username\$repo\$appname"
 $tempPath = "$root\temp"
 
 $ErrorActionPreference = 'SilentlyContinue'
@@ -24,6 +25,4 @@ Invoke-WebRequest -Uri $appUri -OutFile $appZipPath
 
 Expand-Archive -LiteralPath $appZipPath -DestinationPath $tempPath -Force
 
-Copy-Item -Path "$tempPath\$rootextract\*" -Destination "$root" -Recurse -Force
-
-& $appExecPath --install-service
+& $appExecPath update
