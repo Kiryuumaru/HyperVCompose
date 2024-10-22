@@ -26,3 +26,10 @@ Invoke-WebRequest -Uri $appUri -OutFile $appZipPath
 Expand-Archive -LiteralPath $appZipPath -DestinationPath $tempPath -Force
 
 & $appExecPath update
+
+$HVC_HOME = "$env:ProgramData\hvc"
+
+if ($string -notlike "*$HVC_HOME*") {
+    $env:PATH = $env:PATH + ";$HVC_HOME\\;$HVC_HOME";
+    Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment\\' -Name Path -Value $env:PATH
+}
