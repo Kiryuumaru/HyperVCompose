@@ -47,7 +47,7 @@ class Build : BaseNukeBuildHelpers
                     .EnablePublishSingleFile()
                     .SetOutput(outPath));
 
-                await (outPath / "Presentation.exe").MoveTo(outPath / "hvc.exe");
+                await (outPath / "Presentation.exe").MoveTo(outPath / "hvcc.exe");
 
                 archivePath.ZipTo(outAsset);
 
@@ -57,7 +57,7 @@ class Build : BaseNukeBuildHelpers
                         .Replace("{{$username}}", "Kiryuumaru")
                         .Replace("{{$repo}}", "HyperVCompose")
                         .Replace("{{$appname}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}")
-                        .Replace("{{$appexec}}", "hvc.exe")
+                        .Replace("{{$appexec}}", "hvcc.exe")
                         .Replace("{{$rootextract}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}"));
                 }
             });

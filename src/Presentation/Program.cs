@@ -1,7 +1,7 @@
 using CliFx;
 
 return await new CliApplicationBuilder()
-    .SetExecutableName("hvc")
+    .SetExecutableName("hvcc")
     .AddCommandsFromThisAssembly()
     .Build()
     .RunAsync();

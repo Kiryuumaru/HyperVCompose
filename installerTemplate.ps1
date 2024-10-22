@@ -27,9 +27,9 @@ Expand-Archive -LiteralPath $appZipPath -DestinationPath $tempPath -Force
 
 & $appExecPath update
 
-$HVC_HOME = "$env:ProgramData\hvc"
+$hvcc_HOME = "$env:ProgramData\hvcc"
 
-if ($env:PATH -notlike "*$HVC_HOME*") {
-    $env:PATH = $env:PATH + ";$HVC_HOME\;$HVC_HOME";
+if ($env:PATH -notlike "*$hvcc_HOME*") {
+    $env:PATH = $env:PATH + ";$hvcc_HOME\;$hvcc_HOME";
     Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment\' -Name Path -Value $env:PATH
 }

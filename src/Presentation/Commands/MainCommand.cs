@@ -24,7 +24,7 @@ public class MainCommand : ICommand
     public bool AsJson { get; set; } = false;
 
     [CommandOption("home", Description = "Home directory.", EnvironmentVariable = "HYPERV_COMPOSE_HOME")]
-    public string Home { get; set; } = AbsolutePath.Create(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)) / "hvc";
+    public string Home { get; set; } = AbsolutePath.Create(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)) / "hvcc";
 
     public ApplicationHostBuilder<WebApplicationBuilder> CreateBuilder()
     {

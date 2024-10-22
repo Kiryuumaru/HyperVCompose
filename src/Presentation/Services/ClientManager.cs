@@ -45,11 +45,11 @@ internal class ClientManager(ILogger<ClientManager> logger, IConfiguration confi
             "latest",
             async extractFactory =>
             {
-                var extractTemp = _configuration.GetTempPath() / $"hvc-{Guid.NewGuid()}";
+                var extractTemp = _configuration.GetTempPath() / $"hvcc-{Guid.NewGuid()}";
                 await extractFactory.DownloadedFilePath.UnZipTo(extractTemp, cancellationToken);
-                await (extractTemp / folderName / "hvc.exe").CopyTo(extractFactory.ExtractDirectory / "hvc.exe");
+                await (extractTemp / folderName / "hvcc.exe").CopyTo(extractFactory.ExtractDirectory / "hvcc.exe");
             },
-            executableLinkFactory => [(executableLinkFactory / "hvc.exe", "hvc.exe")],
+            executableLinkFactory => [(executableLinkFactory / "hvcc.exe", "hvcc.exe")],
             cancellationToken);
 
         _logger.LogInformation("Latest client downloaded");
@@ -65,15 +65,15 @@ internal class ClientManager(ILogger<ClientManager> logger, IConfiguration confi
 
         _logger.LogInformation("Installing client...");
 
-        var hvcServicePath = await _serviceManager.GetCurrentServicePath(Defaults.AppNameKebabCase, cancellationToken)
-            ?? throw new Exception("HVC client was not downloaded");
-        var hvcExecPath = hvcServicePath / "hvc.exe";
+        var hvccServicePath = await _serviceManager.GetCurrentServicePath(Defaults.AppNameKebabCase, cancellationToken)
+            ?? throw new Exception("hvcc client was not downloaded");
+        var hvccExecPath = hvccServicePath / "hvcc.exe";
 
         await _daemonManager.Install(
             Defaults.AppNameKebabCase,
             Defaults.AppNameReadable,
             Defaults.AppNameDescription,
-            hvcExecPath,
+            hvccExecPath,
             "",
             username,
             password,
