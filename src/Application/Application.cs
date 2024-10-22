@@ -1,5 +1,6 @@
 ﻿using Application.Damper.Workers;
 using Application.LocalStore.Services;
+using Application.ServiceMaster.Services;
 using ApplicationBuilderHelpers;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,6 +14,8 @@ public class Application : ApplicationDependency
 
         services.AddSingleton<LocalStoreConcurrencyService>();
         services.AddTransient<LocalStoreService>();
+        services.AddScoped<ServiceManagerService>();
+        services.AddScoped<DaemonManagerService>();
 
         services.AddHostedService<DamperWorker>();
     }

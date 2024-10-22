@@ -29,8 +29,6 @@ internal class Presentation : Application.Application
     {
         base.AddServices(applicationBuilder, services);
 
-        services.AddScoped<ServiceManager>();
-        services.AddScoped<DaemonManager>();
         services.AddScoped<ClientManager>();
 
         services.AddHttpClient(Options.DefaultName, client =>

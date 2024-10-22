@@ -1,19 +1,19 @@
 ﻿using AbsolutePathHelpers;
-using Application;
 using Application.Configuration.Extensions;
-using Serilog;
 using System.Runtime.InteropServices;
 using Application.Common;
 using System;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
-namespace Presentation.Services;
+namespace Application.ServiceMaster.Services;
 
-internal class DaemonManager(ILogger<DaemonManager> logger, IConfiguration configuration, ServiceManager serviceDownloader)
+public class DaemonManagerService(ILogger<DaemonManagerService> logger, IConfiguration configuration, ServiceManagerService serviceDownloader)
 {
-    private readonly ILogger<DaemonManager> _logger = logger;
+    private readonly ILogger<DaemonManagerService> _logger = logger;
     private readonly IConfiguration _configuration = configuration;
-    private readonly ServiceManager _serviceDownloader = serviceDownloader;
+    private readonly ServiceManagerService _serviceDownloader = serviceDownloader;
 
     private const string WinswBuild = "build.1";
 
@@ -21,8 +21,8 @@ internal class DaemonManager(ILogger<DaemonManager> logger, IConfiguration confi
     {
         using var _ = _logger.BeginScopeMap(new()
         {
-            ["Service"] = nameof(ClientManager),
-            ["ClientManagerAction"] = nameof(PrepareServiceWrapper)
+            ["Service"] = nameof(DaemonManagerService),
+            [$"{nameof(DaemonManagerService)}Action"] = nameof(PrepareServiceWrapper)
         });
 
         var home = _configuration.GetHomePath();
@@ -71,9 +71,9 @@ internal class DaemonManager(ILogger<DaemonManager> logger, IConfiguration confi
 
         using var _ = _logger.BeginScopeMap(new()
         {
-            ["Service"] = nameof(DaemonManager),
+            ["Service"] = nameof(DaemonManagerService),
+            [$"{nameof(DaemonManagerService)}_Action"] = nameof(Install),
             ["ServiceId"] = idLower,
-            ["DaemonManagerAction"] = nameof(Install)
         });
 
         _logger.LogInformation("Installing {ServiceId} service...", idLower);
@@ -146,9 +146,9 @@ internal class DaemonManager(ILogger<DaemonManager> logger, IConfiguration confi
 
         using var _ = _logger.BeginScopeMap(new()
         {
-            ["Service"] = nameof(DaemonManager),
+            ["Service"] = nameof(DaemonManagerService),
+            [$"{nameof(DaemonManagerService)}_Action"] = nameof(Start),
             ["ServiceId"] = idLower,
-            ["DaemonManagerAction"] = nameof(Start)
         });
 
         _logger.LogInformation("Starting {ServiceId} service...", idLower);
@@ -178,9 +178,9 @@ internal class DaemonManager(ILogger<DaemonManager> logger, IConfiguration confi
 
         using var _ = _logger.BeginScopeMap(new()
         {
-            ["Service"] = nameof(DaemonManager),
+            ["Service"] = nameof(DaemonManagerService),
+            [$"{nameof(DaemonManagerService)}_Action"] = nameof(Stop),
             ["ServiceId"] = idLower,
-            ["DaemonManagerAction"] = nameof(Stop)
         });
 
         _logger.LogInformation("Stopping {ServiceId} service...", idLower);
@@ -204,9 +204,9 @@ internal class DaemonManager(ILogger<DaemonManager> logger, IConfiguration confi
 
         using var _ = _logger.BeginScopeMap(new()
         {
-            ["Service"] = nameof(DaemonManager),
+            ["Service"] = nameof(DaemonManagerService),
+            [$"{nameof(DaemonManagerService)}_Action"] = nameof(Uninstall),
             ["ServiceId"] = idLower,
-            ["DaemonManagerAction"] = nameof(Uninstall)
         });
 
         _logger.LogInformation("Uninstalling {ServiceId} service...", idLower);

@@ -4,22 +4,23 @@ using Application.Configuration.Extensions;
 using Serilog;
 using System.Runtime.InteropServices;
 using Application.Common;
+using Application.ServiceMaster.Services;
 
 namespace Presentation.Services;
 
-internal class ClientManager(ILogger<ClientManager> logger, IConfiguration configuration, ServiceManager serviceManager, DaemonManager daemonManager)
+internal class ClientManager(ILogger<ClientManager> logger, IConfiguration configuration, ServiceManagerService serviceManager, DaemonManagerService daemonManager)
 {
     private readonly ILogger<ClientManager> _logger = logger;
     private readonly IConfiguration _configuration = configuration;
-    private readonly ServiceManager _serviceManager = serviceManager;
-    private readonly DaemonManager _daemonManager = daemonManager;
+    private readonly ServiceManagerService _serviceManager = serviceManager;
+    private readonly DaemonManagerService _daemonManager = daemonManager;
 
     public async Task UpdateClient(CancellationToken cancellationToken)
     {
         using var _ = _logger.BeginScopeMap(new()
         {
             ["Service"] = nameof(ClientManager),
-            ["ClientManagerAction"] = nameof(UpdateClient)
+            [$"{nameof(ClientManager)}_Action"] = nameof(UpdateClient)
         });
 
         _logger.LogInformation("Downloading latest client...");
@@ -59,12 +60,13 @@ internal class ClientManager(ILogger<ClientManager> logger, IConfiguration confi
         using var _ = _logger.BeginScopeMap(new()
         {
             ["Service"] = nameof(ClientManager),
-            ["ClientManagerAction"] = nameof(Install)
+            [$"{nameof(ClientManager)}_Action"] = nameof(Install)
         });
 
         _logger.LogInformation("Installing client...");
 
-        var hvcServicePath = await _serviceManager.GetCurrentServicePath(Defaults.AppNameKebabCase, cancellationToken) ?? throw new Exception("HVC client was not downloaded");
+        var hvcServicePath = await _serviceManager.GetCurrentServicePath(Defaults.AppNameKebabCase, cancellationToken)
+            ?? throw new Exception("HVC client was not downloaded");
         var hvcExecPath = hvcServicePath / "hvc.exe";
 
         await _daemonManager.Install(
@@ -89,7 +91,7 @@ internal class ClientManager(ILogger<ClientManager> logger, IConfiguration confi
         using var _ = _logger.BeginScopeMap(new()
         {
             ["Service"] = nameof(ClientManager),
-            ["ClientManagerAction"] = nameof(Start)
+            [$"{nameof(ClientManager)}_Action"] = nameof(Start)
         });
 
         _logger.LogInformation("Starting client service...");
@@ -104,7 +106,7 @@ internal class ClientManager(ILogger<ClientManager> logger, IConfiguration confi
         using var _ = _logger.BeginScopeMap(new()
         {
             ["Service"] = nameof(ClientManager),
-            ["ClientManagerAction"] = nameof(Stop)
+            [$"{nameof(ClientManager)}_Action"] = nameof(Stop)
         });
 
         _logger.LogInformation("Stopping client service...");
@@ -119,7 +121,7 @@ internal class ClientManager(ILogger<ClientManager> logger, IConfiguration confi
         using var _ = _logger.BeginScopeMap(new()
         {
             ["Service"] = nameof(ClientManager),
-            ["ClientManagerAction"] = nameof(Uninstall)
+            [$"{nameof(ClientManager)}_Action"] = nameof(Uninstall)
         });
 
         _logger.LogInformation("Uninstalling client service...");

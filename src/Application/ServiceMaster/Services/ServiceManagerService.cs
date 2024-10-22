@@ -1,17 +1,17 @@
 ﻿using AbsolutePathHelpers;
-using Application;
 using Application.Configuration.Extensions;
-using Serilog;
 using System.Runtime.InteropServices;
 using Application.Common;
 using System;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
-namespace Presentation.Services;
+namespace Application.ServiceMaster.Services;
 
-internal class ServiceManager(ILogger<ServiceManager> logger, IConfiguration configuration)
+public class ServiceManagerService(ILogger<ServiceManagerService> logger, IConfiguration configuration)
 {
-    private readonly ILogger<ServiceManager> _logger = logger;
+    private readonly ILogger<ServiceManagerService> _logger = logger;
     private readonly IConfiguration _configuration = configuration;
 
     public async Task<AbsolutePath> Download(
@@ -26,9 +26,9 @@ internal class ServiceManager(ILogger<ServiceManager> logger, IConfiguration con
 
         using var _ = _logger.BeginScopeMap(new()
         {
-            ["Service"] = nameof(ServiceManager),
+            ["Service"] = nameof(ServiceManagerService),
+            [$"{nameof(ServiceManagerService)}_Action"] = nameof(Download),
             ["ServiceName"] = nameLower,
-            ["ServiceDownloaderAction"] = nameof(Download)
         });
 
         _logger.LogInformation("Downloading service {ServiceName}...", nameLower);
