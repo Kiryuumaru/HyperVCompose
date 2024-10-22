@@ -17,14 +17,19 @@ namespace Presentation.Commands;
 [Command("daemon stop", Description = "Daemon stop command.")]
 public class DaemonStopCommand : MainCommand
 {
-    public override async ValueTask Run(ApplicationHostBuilder<WebApplicationBuilder> appBuilder, CancellationToken cancellationToken)
+    public override async ValueTask ExecuteAsync(IConsole console)
     {
-        await base.Run(appBuilder, cancellationToken);
+        var appBuilder = CreateBuilder();
+        var cancellationToken = console.RegisterCancellationHandler();
 
         var appHost = appBuilder.Build();
 
         var serviceManager = appHost.Host.Services.GetRequiredService<ClientManager>();
 
-        await serviceManager.Stop(cancellationToken);
+        try
+        {
+            await serviceManager.Stop(cancellationToken);
+        }
+        catch (OperationCanceledException) { }
     }
 }

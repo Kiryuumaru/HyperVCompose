@@ -11,20 +11,26 @@ using Serilog;
 using Application.Common;
 using System.Runtime.InteropServices;
 using Presentation.Services;
+using Application.Logger.Interfaces;
 
 namespace Presentation.Commands;
 
 [Command("daemon start", Description = "Daemon start command.")]
 public class DaemonStartCommand : MainCommand
 {
-    public override async ValueTask Run(ApplicationHostBuilder<WebApplicationBuilder> appBuilder, CancellationToken cancellationToken)
+    public override async ValueTask ExecuteAsync(IConsole console)
     {
-        await base.Run(appBuilder, cancellationToken);
+        var appBuilder = CreateBuilder();
+        var cancellationToken = console.RegisterCancellationHandler();
 
         var appHost = appBuilder.Build();
 
         var serviceManager = appHost.Host.Services.GetRequiredService<ClientManager>();
 
-        await serviceManager.Start(cancellationToken);
+        try
+        {
+            await serviceManager.Start(cancellationToken);
+        }
+        catch (OperationCanceledException) { }
     }
 }

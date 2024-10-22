@@ -74,12 +74,13 @@ internal class ClientManager(ILogger<ClientManager> logger, IConfiguration confi
             Defaults.AppNameReadable,
             Defaults.AppNameDescription,
             hvcExecPath,
-            "daemon run",
+            "",
             username,
             password,
             new Dictionary<string, string>
             {
-                ["ASPNETCORE_URLS"] = "http://*:23456"
+                ["ASPNETCORE_URLS"] = "http://*:23456",
+                [$"{Defaults.AppNameUpperSnakeCase}_MAKE_LOGS"] = "yes"
             },
             cancellationToken);
 

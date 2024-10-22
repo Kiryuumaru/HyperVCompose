@@ -1,4 +1,5 @@
 ﻿using Application.Configuration.Extensions;
+using Application.Logger.Interfaces;
 using ApplicationBuilderHelpers;
 using CliFx;
 using CliFx.Attributes;
@@ -13,14 +14,19 @@ namespace Presentation.Commands;
 [Command("update", Description = "Update client.")]
 public class UpdateCommand : MainCommand
 {
-    public override async ValueTask Run(ApplicationHostBuilder<WebApplicationBuilder> appBuilder, CancellationToken cancellationToken)
+    public override async ValueTask ExecuteAsync(IConsole console)
     {
-        await base.Run(appBuilder, cancellationToken);
+        var appBuilder = CreateBuilder();
+        var cancellationToken = console.RegisterCancellationHandler();
 
         var appHost = appBuilder.Build();
 
         var serviceManager = appHost.Host.Services.GetRequiredService<ClientManager>();
 
-        await serviceManager.UpdateClient(cancellationToken);
+        try
+        {
+            await serviceManager.UpdateClient(cancellationToken);
+        }
+        catch (OperationCanceledException) { }
     }
 }

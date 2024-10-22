@@ -14,6 +14,7 @@ using Application.Logger.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Serilog.Events;
 using CliFx.Exceptions;
+using Presentation.Services;
 
 namespace Presentation.Commands;
 
@@ -29,24 +30,11 @@ public class DaemonLogsCommand : MainCommand
     [CommandOption("scope", 's', Description = "Scope of logs.")]
     public IReadOnlyList<string>? Scope { get; set; }
 
-    public override async ValueTask Run(ApplicationHostBuilder<WebApplicationBuilder> appBuilder, CancellationToken cancellationToken)
+    public override async ValueTask ExecuteAsync(IConsole console)
     {
-        await base.Run(appBuilder, cancellationToken);
+        var appBuilder = CreateBuilder();
+        var cancellationToken = console.RegisterCancellationHandler();
 
-        var scopeMap = GetScopeMap();
-
-        var appHost = appBuilder.Build();
-
-        var loggerReader = appHost.Host.Services.GetRequiredService<ILoggerReader>();
-        try
-        {
-            await loggerReader.Start(Tail, Follow, scopeMap, cancellationToken);
-        }
-        catch (OperationCanceledException) { }
-    }
-
-    public Dictionary<string, string> GetScopeMap()
-    {
         Dictionary<string, string> scopePairs = [];
         if (Scope != null)
         {
@@ -67,6 +55,15 @@ public class DaemonLogsCommand : MainCommand
                 }
             }
         }
-        return scopePairs;
+
+        var appHost = appBuilder.Build();
+
+        var loggerReader = appHost.Host.Services.GetRequiredService<ILoggerReader>();
+
+        try
+        {
+            await loggerReader.Start(Tail, Follow, scopePairs, cancellationToken);
+        }
+        catch (OperationCanceledException) { }
     }
 }

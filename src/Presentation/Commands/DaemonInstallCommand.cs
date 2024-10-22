@@ -25,14 +25,19 @@ public class DaemonInstallCommand : MainCommand
     [CommandOption("password", 'p', Description = "Password of the service account.")]
     public string? Password { get; set; }
 
-    public override async ValueTask Run(ApplicationHostBuilder<WebApplicationBuilder> appBuilder, CancellationToken cancellationToken)
+    public override async ValueTask ExecuteAsync(IConsole console)
     {
-        await base.Run(appBuilder, cancellationToken);
+        var appBuilder = CreateBuilder();
+        var cancellationToken = console.RegisterCancellationHandler();
 
         var appHost = appBuilder.Build();
 
         var serviceManager = appHost.Host.Services.GetRequiredService<ClientManager>();
 
-        await serviceManager.Install(Username, Password, cancellationToken);
+        try
+        {
+            await serviceManager.Install(Username, Password, cancellationToken);
+        }
+        catch (OperationCanceledException) { }
     }
 }

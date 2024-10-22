@@ -10,6 +10,7 @@ using Infrastructure.SQLite.LocalStore;
 using Microsoft.Extensions.Logging;
 using Serilog.Events;
 using System.Reflection.PortableExecutable;
+using System.Threading;
 
 namespace Presentation.Commands;
 
@@ -25,7 +26,7 @@ public class MainCommand : ICommand
     [CommandOption("home", Description = "Home directory.", EnvironmentVariable = "HYPERV_COMPOSE_HOME")]
     public string Home { get; set; } = AbsolutePath.Create(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData)) / "hvc";
 
-    public ValueTask ExecuteAsync(IConsole console)
+    public ApplicationHostBuilder<WebApplicationBuilder> CreateBuilder()
     {
         var appBuilder = ApplicationHost.FromBuilder(WebApplication.CreateBuilder())
             .Add<Presentation>()
@@ -33,25 +34,28 @@ public class MainCommand : ICommand
             .Add<SQLiteLocalStoreInfrastructure>();
 
         appBuilder.Configuration.SetLoggerLevel(LogLevel);
-        appBuilder.Configuration.SetHomePath(GetHome());
 
-        return Run(appBuilder, console.RegisterCancellationHandler());
-    }
-
-    public virtual ValueTask Run(ApplicationHostBuilder<WebApplicationBuilder> appBuilder, CancellationToken cancellationToken)
-    {
-        return default;
-    }
-
-    internal AbsolutePath GetHome()
-    {
         try
         {
-            return AbsolutePath.Create(Home);
+            appBuilder.Configuration.SetHomePath(AbsolutePath.Create(Home));
         }
         catch
         {
             throw new CommandException($"Invalid home directory \"{Home}\".", 1000);
         }
+
+        return appBuilder;
+    }
+
+    public virtual async ValueTask ExecuteAsync(IConsole console)
+    {
+        var appBuilder = CreateBuilder();
+        var cancellationToken = console.RegisterCancellationHandler();
+
+        try
+        {
+            await appBuilder.Build().Run(cancellationToken);
+        }
+        catch (OperationCanceledException) { }
     }
 }
