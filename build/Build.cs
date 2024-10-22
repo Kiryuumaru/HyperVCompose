@@ -33,17 +33,9 @@ class Build : BaseNukeBuildHelpers
             definitionArch.Execute(async context =>
             {
                 string projectVersion = "0.0.0";
-                if (context.TryGetPullRequestContext(out var prContext))
+                if (context.TryGetVersionedContext(out var versionedContext))
                 {
-                    projectVersion = prContext.AppVersion.Version.ToString();
-                }
-                else if (context.TryGetBumpContext(out var bumpContext))
-                {
-                    projectVersion = bumpContext.AppVersion.Version.ToString();
-                }
-                else if (context.TryGetVersionedContext(out var versionedContext))
-                {
-                    projectVersion = versionedContext.AppVersion.Version.ToString();
+                    projectVersion = versionedContext.AppVersion.Version.WithoutMetadata().ToString();
                 }
                 var outAsset = GetOutAsset(arch);
                 var archivePath = outAsset.Parent / outAsset.NameWithoutExtension;
@@ -51,6 +43,10 @@ class Build : BaseNukeBuildHelpers
                 var proj = RootDirectory / "src" / "Presentation" / "Presentation.csproj";
                 DotNetTasks.DotNetBuild(_ => _
                     .SetProjectFile(proj)
+                    .SetVersion(projectVersion)
+                    .SetInformationalVersion(projectVersion)
+                    .SetFileVersion(projectVersion)
+                    .SetAssemblyVersion(projectVersion)
                     .SetConfiguration("Release"));
                 DotNetTasks.DotNetPublish(_ => _
                     .SetProject(proj)
