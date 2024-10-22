@@ -32,6 +32,19 @@ class Build : BaseNukeBuildHelpers
             definitionArch.DisplayName($"[Build] Windows{arch.ToUpperInvariant()}");
             definitionArch.Execute(async context =>
             {
+                string projectVersion = "0.0.0";
+                if (context.TryGetPullRequestContext(out var prContext))
+                {
+                    projectVersion = prContext.AppVersion.Version.ToString();
+                }
+                else if (context.TryGetBumpContext(out var bumpContext))
+                {
+                    projectVersion = bumpContext.AppVersion.Version.ToString();
+                }
+                else if (context.TryGetVersionedContext(out var versionedContext))
+                {
+                    projectVersion = versionedContext.AppVersion.Version.ToString();
+                }
                 var outAsset = GetOutAsset(arch);
                 var archivePath = outAsset.Parent / outAsset.NameWithoutExtension;
                 var outPath = archivePath / outAsset.NameWithoutExtension;
@@ -44,6 +57,10 @@ class Build : BaseNukeBuildHelpers
                     .SetConfiguration("Release")
                     .EnableSelfContained()
                     .SetRuntime($"win-{arch.ToLowerInvariant()}")
+                    .SetVersion(projectVersion)
+                    .SetInformationalVersion(projectVersion)
+                    .SetFileVersion(projectVersion)
+                    .SetAssemblyVersion(projectVersion)
                     .EnablePublishSingleFile()
                     .SetOutput(outPath));
 
