@@ -100,4 +100,24 @@ public static class ConfigurationExtensions
     {
         return GetHomePath(configuration) / ".data";
     }
+
+    public static AbsolutePath GetTempPath(this IConfiguration configuration)
+    {
+        return GetDataPath(configuration) / "temp";
+    }
+
+    public static AbsolutePath GetDownloadsPath(this IConfiguration configuration)
+    {
+        return GetDataPath(configuration) / "downloads";
+    }
+
+    public static AbsolutePath GetServicesPath(this IConfiguration configuration)
+    {
+        return GetDataPath(configuration) / "svc";
+    }
+
+    public static AbsolutePath GetDaemonsPath(this IConfiguration configuration)
+    {
+        return GetDataPath(configuration) / "daemon";
+    }
 }

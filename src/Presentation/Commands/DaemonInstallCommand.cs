@@ -31,7 +31,7 @@ public class DaemonInstallCommand : MainCommand
 
         var appHost = appBuilder.Build();
 
-        var serviceManager = appHost.Host.Services.GetRequiredService<ServiceManager>();
+        var serviceManager = appHost.Host.Services.GetRequiredService<ClientManager>();
 
         await serviceManager.Install(Username, Password, cancellationToken);
     }

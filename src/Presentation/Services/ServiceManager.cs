@@ -4,6 +4,8 @@ using Application.Configuration.Extensions;
 using Serilog;
 using System.Runtime.InteropServices;
 using Application.Common;
+using System;
+using System.Text.Json;
 
 namespace Presentation.Services;
 
@@ -12,256 +14,140 @@ internal class ServiceManager(ILogger<ServiceManager> logger, IConfiguration con
     private readonly ILogger<ServiceManager> _logger = logger;
     private readonly IConfiguration _configuration = configuration;
 
-    public async Task PrepareServiceWrapper(CancellationToken cancellationToken)
+    public async Task<AbsolutePath> Download(
+        string name,
+        string url,
+        string version,
+        Func<(AbsolutePath DownloadedFilePath, AbsolutePath ExtractDirectory), Task> extractFactory,
+        Func<AbsolutePath, (AbsolutePath Path, string name)[]> executableLinkFactory,
+        CancellationToken cancellationToken)
     {
+        var nameLower = name.ToLowerInvariant();
+
         using var _ = _logger.BeginScopeMap(new()
         {
             ["Service"] = nameof(ServiceManager),
-            ["ServiceManagerAction"] = nameof(PrepareServiceWrapper)
+            ["ServiceName"] = nameLower,
+            ["ServiceDownloaderAction"] = nameof(Download)
         });
 
-        var home = _configuration.GetHomePath();
+        _logger.LogInformation("Downloading service {ServiceName}...", nameLower);
 
-        var winswExecPath = home / "winsw.exe";
+        var guid = Guid.NewGuid().ToString();
+        var homePath = _configuration.GetHomePath();
+        var servicePath = _configuration.GetServicesPath() / nameLower;
+        var downloadedPath = _configuration.GetDownloadsPath() / $"{nameLower}-{version}-{guid}";
 
-        if (!File.Exists(winswExecPath))
-        {
-            _logger.LogDebug("Service wrapper not found. Downloading...");
+        downloadedPath.Parent?.CreateDirectory();
 
-            string folderName;
-            if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
-            {
-                folderName = "winsw_windows_x64";
-            }
-            else if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
-            {
-                folderName = "winsw_windows_arm64";
-            }
-            else
-            {
-                throw new NotSupportedException();
-            }
-            string dlUrl = $"https://github.com/Kiryuumaru/winsw-modded/releases/download/build.1/{folderName}.zip";
-            var downloadsPath = home / "downloads";
-            var winswZipPath = downloadsPath / "winsw.zip";
-            var winswZipExtractPath = downloadsPath / "winsw";
-            var winswDownloadedExecPath = winswZipExtractPath / folderName / "winsw.exe";
-            try
-            {
-                await winswZipPath.Delete(cancellationToken);
-            }
-            catch { }
-            try
-            {
-                await winswZipExtractPath.Delete(cancellationToken);
-            }
-            catch { }
-            downloadsPath.CreateDirectory();
-            winswZipExtractPath.CreateDirectory();
-            {
-                using var client = new HttpClient();
-                using var s = await client.GetStreamAsync(dlUrl, cancellationToken: cancellationToken);
-                using var fs = new FileStream(winswZipPath, FileMode.OpenOrCreate);
-                await s.CopyToAsync(fs, cancellationToken: cancellationToken);
-            }
-            await winswZipPath.UnZipTo(winswZipExtractPath, cancellationToken);
-            await winswDownloadedExecPath.CopyTo(winswExecPath, cancellationToken);
-
-            _logger.LogDebug("Service wrapper downloaded");
-        }
-
-        var config = $"""
-            <service>
-              <id>{Defaults.AppNameKebabCase}</id>
-              <name>Hyper-V Composer</name>
-              <description>Hyper-V Composer API Service for managing Hyper-V VM instances</description>
-              <executable>%BASE%\hvc.exe</executable>
-              <arguments>daemon run</arguments>
-              <log mode="none"></log>
-              <startmode>Automatic</startmode>
-              <onfailure action="restart" delay="2 sec"/>
-              <env name="ASPNETCORE_URLS" value="http://*:23456" />
-            </service>
-            """;
-
-        var serviceConfig = home / "svc.xml";
-        await File.WriteAllTextAsync(serviceConfig, config, cancellationToken);
-    }
-
-    public async Task UpdateClient(CancellationToken cancellationToken)
-    {
-        using var _ = _logger.BeginScopeMap(new()
-        {
-            ["Service"] = nameof(ServiceManager),
-            ["ServiceManagerAction"] = nameof(UpdateClient)
-        });
-
-        var home = _configuration.GetHomePath();
-
-        var cliClientExec = home / "hvc.exe";
-
-        _logger.LogDebug("Service wrapper not found. Downloading...");
-
-        string folderName;
-        if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
-        {
-            folderName = "HyperVCompose_WindowsX64";
-        }
-        else if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
-        {
-            folderName = "HyperVCompose_WindowsARM64";
-        }
-        else
-        {
-            throw new NotSupportedException();
-        }
-        string dlUrl = $"https://github.com/Kiryuumaru/HyperVCompose/releases/latest/download/{folderName}.zip";
-        var downloadsPath = home / "downloads";
-        var winswZipPath = downloadsPath / "HyperVCompose.zip";
-        var winswZipExtractPath = downloadsPath / "HyperVCompose";
-        var winswDownloadedExecPath = winswZipExtractPath / folderName / "hvc.exe";
-        try
-        {
-            await winswZipPath.Delete(cancellationToken);
-        }
-        catch { }
-        try
-        {
-            await winswZipExtractPath.Delete(cancellationToken);
-        }
-        catch { }
-        downloadsPath.CreateDirectory();
-        winswZipExtractPath.CreateDirectory();
         {
             using var client = new HttpClient();
-            using var s = await client.GetStreamAsync(dlUrl, cancellationToken: cancellationToken);
-            using var fs = new FileStream(winswZipPath, FileMode.OpenOrCreate);
+            using var s = await client.GetStreamAsync(url, cancellationToken: cancellationToken);
+            using var fs = new FileStream(downloadedPath, FileMode.OpenOrCreate);
             await s.CopyToAsync(fs, cancellationToken: cancellationToken);
         }
-        await winswZipPath.UnZipTo(winswZipExtractPath, cancellationToken);
-        await cliClientExec.Delete(cancellationToken);
-        File.CreateSymbolicLink(cliClientExec, winswDownloadedExecPath);
 
-        _logger.LogDebug("Service wrapper downloaded");
+        var extractDirectory = servicePath / version / guid;
+
+        extractDirectory.CreateDirectory();
+
+        await extractFactory((downloadedPath, extractDirectory));
+
+        foreach (var (linkPath, linkName) in executableLinkFactory(extractDirectory))
+        {
+            AbsolutePath linkToCreate = homePath / linkName;
+            await linkToCreate.Delete(cancellationToken);
+            File.CreateSymbolicLink(linkToCreate, linkPath);
+        }
+
+        var index = new
+        {
+            version,
+            guid,
+        };
+
+        await (servicePath / "index").Write(index, cancellationToken: cancellationToken);
+
+        _logger.LogInformation("Service {ServiceName} downloaded", name);
+
+        return extractDirectory;
     }
 
-    public async Task Install(string? username, string? password, CancellationToken cancellationToken)
+    public Task<AbsolutePath> Download(
+        string name,
+        string url,
+        string version,
+        Func<(AbsolutePath DownloadedFilePath, AbsolutePath ExtractDirectory), Task> extractFactory,
+        CancellationToken cancellationToken)
     {
-        using var _ = _logger.BeginScopeMap(new()
-        {
-            ["Service"] = nameof(ServiceManager),
-            ["ServiceManagerAction"] = nameof(Install)
-        });
+        return Download(name, url, version, extractFactory, _ => [], cancellationToken);
+    }
 
-        _logger.LogInformation("Installing service...");
+    public async Task<AbsolutePath?> GetCurrentServicePath(string name, CancellationToken cancellationToken)
+    {
+        var nameLower = name.ToLowerInvariant();
 
-        var home = _configuration.GetHomePath();
-
-        await PrepareServiceWrapper(cancellationToken);
-
-        var winswExecPath = home / "winsw.exe";
-        var serviceConfig = home / "svc.xml";
+        var servicePath = _configuration.GetServicesPath() / nameLower;
+        var servicePathCurrentIndex = servicePath / "index";
 
         try
         {
-            await Cli.RunListenAndLog(_logger, $"{winswExecPath} stop {serviceConfig} --force", stoppingToken: cancellationToken);
-            _logger.LogDebug("Existing service stopped");
-            await Cli.RunListenAndLog(_logger, $"{winswExecPath} uninstall {serviceConfig}", stoppingToken: cancellationToken);
-            _logger.LogDebug("Existing service uninstalled");
+            var indexStr = await servicePathCurrentIndex.ReadAllText(cancellationToken);
+            var indexJson = JsonSerializer.Deserialize<JsonDocument>(indexStr)!;
+            var currentVersion = indexJson.RootElement.GetProperty("version").GetString()!;
+            var currentGuid = indexJson.RootElement.GetProperty("guid").GetString()!;
+            _ = Guid.Parse(currentGuid);
+            return servicePath / currentVersion / currentGuid;
         }
         catch { }
-        if (!string.IsNullOrEmpty(username) || !string.IsNullOrEmpty(password))
+
+        return null;
+    }
+
+    public async Task<AbsolutePath?> GetServicePath(string name, string version, CancellationToken cancellationToken)
+    {
+        var nameLower = name.ToLowerInvariant();
+
+        var servicePath = _configuration.GetServicesPath() / nameLower;
+        var servicePathCurrentIndex = servicePath / "index";
+
+        try
         {
-            if (string.IsNullOrEmpty(username) && string.IsNullOrEmpty(password))
+            var indexStr = await servicePathCurrentIndex.ReadAllText(cancellationToken);
+            var indexJson = JsonSerializer.Deserialize<JsonDocument>(indexStr)!;
+            var currentVersion = indexJson.RootElement.GetProperty("version").GetString()!;
+            var guid = indexJson.RootElement.GetProperty("guid").GetString()!;
+            if (version != currentVersion)
             {
-                throw new Exception("Both username and password must be specified");
+                return null;
             }
-
-            await Cli.RunListenAndLog(_logger, $"{winswExecPath} install {serviceConfig} --username \"{username}\" --password \"{password}\"", stoppingToken: cancellationToken);
-        }
-        else
-        {
-            await Cli.RunListenAndLog(_logger, $"{winswExecPath} install {serviceConfig}", stoppingToken: cancellationToken);
-        }
-
-        _logger.LogInformation("Service installed");
-    }
-
-    public async Task Start(CancellationToken cancellationToken)
-    {
-        using var _ = _logger.BeginScopeMap(new()
-        {
-            ["Service"] = nameof(ServiceManager),
-            ["ServiceManagerAction"] = nameof(Start)
-        });
-
-        _logger.LogInformation("Starting service...");
-
-        var home = _configuration.GetHomePath();
-
-        await PrepareServiceWrapper(cancellationToken);
-
-        var winswExecPath = home / "winsw.exe";
-        var serviceConfig = home / "svc.xml";
-
-        try
-        {
-            await Cli.RunListenAndLog(_logger, $"{winswExecPath} stop {serviceConfig} --force", stoppingToken: cancellationToken);
-            _logger.LogDebug("Existing service stopped");
+            _ = Guid.Parse(guid);
+            return servicePath / version / guid;
         }
         catch { }
-        await Cli.RunListenAndLog(_logger, $"{winswExecPath} start {serviceConfig}", stoppingToken: cancellationToken);
 
-        _logger.LogInformation("Service started");
+        return null;
     }
 
-    public async Task Stop(CancellationToken cancellationToken)
+    public async Task<AbsolutePath> GetServicePathOrDownload(
+        string name,
+        string url,
+        string version,
+        Func<(AbsolutePath DownloadedFilePath, AbsolutePath ExtractDirectory), Task> extractFactory,
+        Func<AbsolutePath, (AbsolutePath Path, string name)[]> executableLinkFactory,
+        CancellationToken cancellationToken)
     {
-        using var _ = _logger.BeginScopeMap(new()
-        {
-            ["Service"] = nameof(ServiceManager),
-            ["ServiceManagerAction"] = nameof(Stop)
-        });
-
-        _logger.LogInformation("Stopping service...");
-
-        var home = _configuration.GetHomePath();
-
-        await PrepareServiceWrapper(cancellationToken);
-
-        var winswExecPath = home / "winsw.exe";
-        var serviceConfig = home / "svc.xml";
-
-        await Cli.RunListenAndLog(_logger, $"{winswExecPath} stop {serviceConfig} --force", stoppingToken: cancellationToken);
-
-        _logger.LogInformation("Service stopped");
+        return await GetServicePath(name, version, cancellationToken) ??
+            await Download(name, url, version, extractFactory, executableLinkFactory, cancellationToken);
     }
 
-    public async Task Uninstall(CancellationToken cancellationToken)
+    public Task<AbsolutePath> GetServicePathOrDownload(
+        string name,
+        string url,
+        string version,
+        Func<(AbsolutePath DownloadedFilePath, AbsolutePath ExtractDirectory), Task> extractFactory,
+        CancellationToken cancellationToken)
     {
-        using var _ = _logger.BeginScopeMap(new()
-        {
-            ["Service"] = nameof(ServiceManager),
-            ["ServiceManagerAction"] = nameof(Uninstall)
-        });
-
-        _logger.LogInformation("Uninstalling service...");
-
-        var home = _configuration.GetHomePath();
-
-        await PrepareServiceWrapper(cancellationToken);
-
-        var winswExecPath = home / "winsw.exe";
-        var serviceConfig = home / "svc.xml";
-
-        try
-        {
-            await Cli.RunListenAndLog(_logger, $"{winswExecPath} stop {serviceConfig} --force", stoppingToken: cancellationToken);
-            _logger.LogDebug("Existing service stopped");
-        }
-        catch { }
-        await Cli.RunListenAndLog(_logger, $"{winswExecPath} uninstall {serviceConfig}", stoppingToken: cancellationToken);
-
-        _logger.LogInformation("Service uninstalled");
+        return GetServicePathOrDownload(name, url, version, extractFactory, _ => [], cancellationToken);
     }
 }

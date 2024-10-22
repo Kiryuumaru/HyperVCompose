@@ -13,4 +13,6 @@ public static class Defaults
     public const string AppNameSnakeCase = "hyperv_compose";
     public const string AppNameUpperSnakeCase = "HYPERV_COMPOSE";
     public const string AppNameKebabCase = "hyperv-compose";
+    public const string AppNameReadable = "Hyper-V Compose";
+    public const string AppNameDescription = "Hyper-V Composer API Service for managing Hyper-V VM instances";
 }
