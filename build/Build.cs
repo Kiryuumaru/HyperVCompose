@@ -27,7 +27,7 @@ class Build : BaseNukeBuildHelpers
             definitionArch.RunnerOS(RunnerOS.Windows2022);
             definitionArch.WorkflowId($"build_windows_{arch}");
             definitionArch.DisplayName($"[Build] Windows{arch.ToUpperInvariant()}");
-            definitionArch.Execute(async context =>
+            definitionArch.Execute(context =>
             {
                 string projectVersion = "0.0.0";
                 if (context.TryGetVersionedContext(out var versionedContext))
