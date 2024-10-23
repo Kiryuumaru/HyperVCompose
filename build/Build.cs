@@ -1,6 +1,5 @@
 using Nuke.Common.IO;
 using NukeBuildHelpers;
-using NukeBuildHelpers.Common.Attributes;
 using NukeBuildHelpers.Entry;
 using NukeBuildHelpers.Entry.Extensions;
 using NukeBuildHelpers.RunContext.Interfaces;
@@ -10,8 +9,6 @@ using System;
 using NukeBuildHelpers.RunContext.Extensions;
 using Nuke.Common.Tools.DotNet;
 using NukeBuildHelpers.Common;
-using System.Drawing.Drawing2D;
-using System.Text.RegularExpressions;
 
 class Build : BaseNukeBuildHelpers
 {
@@ -60,8 +57,6 @@ class Build : BaseNukeBuildHelpers
                     .EnablePublishSingleFile()
                     .SetOutput(outPath));
 
-                await (outPath / "hvcc.exe").MoveTo(outPath / "hvcc.exe");
-
                 archivePath.ZipTo(outAsset);
 
                 if (context.TryGetVersionedContext(out var versioned))
@@ -71,7 +66,8 @@ class Build : BaseNukeBuildHelpers
                         .Replace("{{$repo}}", "HyperVCompose")
                         .Replace("{{$appname}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}")
                         .Replace("{{$appexec}}", "hvcc.exe")
-                        .Replace("{{$rootextract}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}"));
+                        .Replace("{{$rootextract}}", $"HyperVCompose_Windows{arch.ToUpperInvariant()}")
+                        .Replace("{{$homepath}}", $"$env:ProgramData\\hvcc"));
                 }
             });
         });

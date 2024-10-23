@@ -27,7 +27,7 @@ Expand-Archive -LiteralPath $appZipPath -DestinationPath $tempPath -Force
 
 & $appExecPath update
 
-$hvcc_HOME = "$env:ProgramData\hvcc"
+$hvcc_HOME = '{{$homepath}}'
 
 if ($env:PATH -notlike "*$hvcc_HOME*") {
     $env:PATH = $env:PATH + ";$hvcc_HOME\;$hvcc_HOME";
