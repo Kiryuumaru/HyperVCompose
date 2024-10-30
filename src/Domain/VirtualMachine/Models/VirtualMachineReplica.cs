@@ -9,9 +9,7 @@ namespace Domain.VirtualMachine.Models;
 
 public class VirtualMachineReplica
 {
-    public required string BuildId { get; init; }
-
-    public required VirtualMachineOSType VirtualMachineOS { get; init; }
+    public required VirtualMachineBuild VirtualMachineBuild { get; init; }
 
     public required string Id { get; init; }
 
@@ -22,8 +20,4 @@ public class VirtualMachineReplica
     public required int MemoryGB { get; init; }
 
     public required int StorageGB { get; init; }
-
-    public required Dictionary<string, string> Labels { get; init; }
-
-    public required string? VMName { get; init; }
 }

@@ -14,6 +14,8 @@ public class ServiceManagerService(ILogger<ServiceManagerService> logger, IConfi
     private readonly ILogger<ServiceManagerService> _logger = logger;
     private readonly IConfiguration _configuration = configuration;
 
+    private readonly TimeSpan _downloadProgressReportSpan = TimeSpan.FromSeconds(1);
+
     public async Task<AbsolutePath> Download(
         string name,
         string url,
@@ -42,13 +44,49 @@ public class ServiceManagerService(ILogger<ServiceManagerService> logger, IConfi
 
         {
             using var client = new HttpClient();
+
+            HttpRequestMessage message = new(HttpMethod.Head, url);
+            using var response = await client.SendAsync(message, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            long? length = response.Content.Headers.ContentLength;
+
             using var s = await client.GetStreamAsync(url, cancellationToken: cancellationToken);
             using var fs = new FileStream(downloadedPath, FileMode.OpenOrCreate);
-            await s.CopyToAsync(fs, cancellationToken: cancellationToken);
+
+            void logProgress(long totalDownloaded)
+            {
+                var totalDownloadedMB = totalDownloaded / 1024.0 / 1024.0;
+                if (length != null)
+                {
+                    var lengthMB = length.Value / 1024.0 / 1024.0;
+                    _logger.LogTrace("Download progress {ProgressTotalDownloadedMB:N2} / {ProgressTotalToDownloadMB:N2} MB...", totalDownloadedMB, lengthMB);
+                }
+                else
+                {
+                    _logger.LogTrace("Download progress {ProgressTotalDownloadedMB:N2}...", totalDownloadedMB);
+                }
+            }
+
+            DateTimeOffset lastProg = DateTimeOffset.MinValue;
+            await s.CopyToAsync(fs, progressCallback: downloadedLength =>
+            {
+                var now = DateTimeOffset.UtcNow;
+                if (lastProg + _downloadProgressReportSpan < now)
+                {
+                    logProgress(downloadedLength);
+                    lastProg = now;
+                }
+
+            }, cancellationToken: cancellationToken);
+
+            if (length != null)
+            {
+                logProgress(length.Value);
+            }
         }
 
         var extractDirectory = servicePath / version / guid;
-
+         
         extractDirectory.CreateDirectory();
 
         await extractFactory((downloadedPath, extractDirectory));
