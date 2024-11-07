@@ -15,7 +15,7 @@
 		<PackageReference Include="AbsolutePathHelpers" Version="0.1.46" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
-		<PackageReference Include="ApplicationBuilderHelpers" Version="1.0.34" />
+		<PackageReference Include="ApplicationBuilderHelpers" Version="1.0.35" />
 		<PackageReference Include="CliWrap" Version="3.6.7" />
 		<PackageReference Include="RestfulHelpers" Version="1.7.103" />
 	</ItemGroup>
